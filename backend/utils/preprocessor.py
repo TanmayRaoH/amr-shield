@@ -11,7 +11,9 @@ Provides the PreprocessorService class responsible for:
 
 import os
 import pickle
+
 import numpy as np
+import pandas as pd
 
 
 # Absolute path to the backend/models/ directory, resolved relative to this file
@@ -78,6 +80,47 @@ class PreprocessorService:
         if not self._artifacts_loaded:
             self.load_artifacts()
 
+    @property
+    def features(self) -> list:
+        """
+        The ordered list of training feature (symptom) names.
+
+        This is the single source of truth for which symptom strings the models
+        accept. The frontend fetches it via GET /api/v1/symptoms rather than
+        hardcoding its own list, which previously allowed the two lists to drift.
+
+        Returns:
+            list[str]: A copy of the feature name list, in training order.
+        """
+        self._ensure_loaded()
+        return list(self._features)
+
+    @property
+    def num_features(self) -> int:
+        """Number of feature columns the models were trained on."""
+        self._ensure_loaded()
+        return len(self._features)
+
+    @property
+    def classes(self) -> list:
+        """
+        The ordered list of target class names as learned by the LabelEncoder.
+
+        Index position corresponds to the numeric label used by the models, so
+        classes[i] is the name for numeric label i.
+
+        Returns:
+            list[str]: A copy of the class name list.
+        """
+        self._ensure_loaded()
+        return [str(c) for c in self._label_encoder.classes_]
+
+    @property
+    def num_classes(self) -> int:
+        """Number of target classes the models can predict."""
+        self._ensure_loaded()
+        return len(self._label_encoder.classes_)
+
     def preprocess(self, symptoms_list: list) -> np.ndarray:
         """
         Convert a list of symptom strings into a scaled feature vector.
@@ -112,11 +155,14 @@ class PreprocessorService:
                 idx = self._features.index(symptom)
                 feature_vector[idx] = 1.0
 
-        # Reshape to (1, n_features) for the scaler and models
-        feature_vector = feature_vector.reshape(1, -1)
+        # The scaler was fitted on a named DataFrame, so transform it with one.
+        # Passing a bare ndarray works but emits a "X does not have valid feature
+        # names" warning on every request, and it silently relies on column order
+        # matching rather than verifying it.
+        frame = pd.DataFrame([feature_vector], columns=self._features)
 
         # Apply the StandardScaler fitted during training
-        scaled_vector = self._scaler.transform(feature_vector)
+        scaled_vector = self._scaler.transform(frame)
 
         return scaled_vector
 

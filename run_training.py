@@ -15,6 +15,11 @@ import warnings
 import json
 from datetime import datetime, timezone
 
+# Windows consoles default to cp1252 which cannot encode box-drawing characters.
+# Force UTF-8 so print statements never crash the training run.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -53,10 +58,14 @@ df = df_raw.copy()
 rows_before = len(df)
 df.dropna(subset=['Disease'], inplace=True)
 print(f"\nRows removed (missing Disease) : {rows_before - len(df)}")
-rows_after = len(df)
-df.drop_duplicates(inplace=True)
-print(f"Rows removed (duplicates)      : {rows_after - len(df)}")
-print(f"Rows remaining                 : {len(df)}")
+
+# NOTE: Do NOT call drop_duplicates() here.
+# This dataset intentionally repeats disease-symptom combinations as separate
+# patient observations. Deduplicating collapsed 4920 rows -> 304 rows (94% loss),
+# leaving only ~7 samples per class across 41 classes. That starved XGBoost and
+# caused it to underfit badly (F1 0.81 vs Random Forest 1.0).
+# Keeping all rows gives ~120 samples per class.
+print(f"Rows retained (duplicates kept): {len(df)}")
 
 # ── Step 3: Feature Engineering — Wide → Binary Matrix ───────────────────────
 df['Disease'] = df['Disease'].str.strip()
@@ -93,7 +102,7 @@ binary_matrix.columns.name = None
 X_raw = binary_matrix.drop(columns=['row_idx', 'Disease']).astype(int)
 y_raw = binary_matrix['Disease']
 
-print(f"\n── Feature Engineering Complete ──")
+print(f"\n-- Feature Engineering Complete --")
 print(f"Feature columns : {X_raw.shape[1]} unique symptoms")
 print(f"Target rows     : {len(y_raw)}")
 print(f"Unique classes  : {y_raw.nunique()}")

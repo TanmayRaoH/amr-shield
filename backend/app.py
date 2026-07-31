@@ -16,12 +16,15 @@ import logging
 import os
 import sys
 
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+from werkzeug.exceptions import HTTPException
 
 from backend.config import Config
 from backend.routes.health import health_bp
 from backend.routes.predict import predict_bp
+from backend.routes.symptoms import symptoms_bp
 from backend.services.ml_service import ml_service
 from backend.utils.preprocessor import preprocessor_service
 
@@ -56,6 +59,60 @@ def _configure_logging(app: Flask) -> None:
     logging.getLogger("werkzeug").setLevel(log_level)
 
 
+def _register_error_handlers(app: Flask) -> None:
+    """
+    Ensure every error leaves the API as JSON, never as an HTML page.
+
+    Without these handlers Flask returns its default HTML error document, and
+    in debug mode that document contains a full stack trace — an information
+    leak on a public endpoint. The frontend also cannot parse HTML, so a 500
+    would surface to the user as an unhelpful generic failure.
+
+    Args:
+        app (Flask): The Flask application instance to configure.
+    """
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(exc: HTTPException):
+        """Convert any werkzeug HTTP error (404, 405, 413, ...) into JSON."""
+        app.logger.info(f"HTTP {exc.code} on {request.method} {request.path}: {exc.name}")
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "error": exc.name,
+                    "message": exc.description,
+                }
+            ),
+            exc.code or 500,
+        )
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(exc: Exception):
+        """
+        Catch-all for unhandled exceptions.
+
+        The exception is logged in full server-side, but the client only ever
+        receives a generic message so internal details are never exposed.
+        """
+        app.logger.exception(
+            f"Unhandled exception on {request.method} {request.path}: {exc}"
+        )
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "error": "Internal Server Error",
+                    "message": (
+                        "An unexpected server error occurred. "
+                        "Check the server logs for details."
+                    ),
+                }
+            ),
+            500,
+        )
+
+
 def create_app() -> Flask:
     """
     Application factory.
@@ -82,6 +139,10 @@ def create_app() -> Flask:
     # --- Blueprints ---
     app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(predict_bp, url_prefix="/api/v1")
+    app.register_blueprint(symptoms_bp, url_prefix="/api/v1")
+
+    # --- Error handlers ---
+    _register_error_handlers(app)
 
     # --- Request logging ---
     @app.before_request
@@ -104,11 +165,21 @@ def create_app() -> Flask:
         preprocessor_service.load_artifacts()
         ml_service.load_models()
         app.logger.info("ML models and preprocessing artifacts loaded successfully.")
+        app.logger.info(f"Models loaded status: {ml_service.models_loaded}")
     except FileNotFoundError as exc:
         app.logger.warning(
             "Startup: pkl files not found — server running without models. "
-            "Run notebooks/model_training.ipynb to generate them. "
+            "Run `python run_training.py` to generate them. "
             f"Detail: {exc}"
+        )
+    except Exception as exc:
+        # A version mismatch between the pickles and the installed sklearn /
+        # xgboost surfaces here. Log it loudly but still boot, so /health can
+        # report the degraded state instead of the process dying silently.
+        app.logger.error(
+            f"Startup: artifacts present but failed to load ({type(exc).__name__}: {exc}). "
+            "This usually means the pickles were built with different library "
+            "versions. Re-run `python run_training.py`."
         )
 
     return app
@@ -125,4 +196,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=Config.PORT,
         debug=Config.is_debug(),
+        use_reloader=False,  # Reloader causes double-import which resets singleton state
     )
