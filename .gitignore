@@ -28,6 +28,10 @@ notebooks/.ipynb_checkpoints/
 # Raw dataset — too large for git, download separately
 data/raw/*.csv
 
+# Node.js dependencies
+frontend/node_modules/
+node_modules/
+
 # Processed data
 data/processed/
 
