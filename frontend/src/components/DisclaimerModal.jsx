@@ -79,9 +79,9 @@ export default function DisclaimerModal() {
                 –
               </span>
               <span>
-                Many of the 41 target classes are{' '}
-                <strong className="text-navy">not infections</strong> (for example diabetes,
-                hypertension, migraine). Antibiotics are never appropriate for those.
+                Only <strong className="text-navy">7 of the 41 target classes</strong> are
+                conditions where antibiotics have any role. The rest include viral infections and
+                conditions that are not infections at all, such as diabetes and hypertension.
               </span>
             </li>
             <li className="flex gap-2">

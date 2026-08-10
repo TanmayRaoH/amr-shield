@@ -17,7 +17,7 @@ const FEATURES = [
   },
   {
     title: 'Says no to antibiotics',
-    desc: 'For the 24 of 41 classes where antibiotics are not appropriate, the result explains why rather than recommending a drug. Declining to prescribe is the point of stewardship.',
+    desc: 'For the 34 of 41 classes where antibiotics are not appropriate, the result explains why rather than recommending a drug. Declining to prescribe is the point of stewardship.',
   },
   {
     title: 'AWaRe stewardship labels',
@@ -136,25 +136,28 @@ export default function Landing() {
       {/* ── CTA ── */}
       <section className="bg-navy text-white py-16 px-6">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-extrabold mb-4">
-            Ready to run a diagnosis?
-          </h2>
+          <h2 className="text-3xl font-extrabold mb-4">Try it with an example case</h2>
           <p className="text-slate-300 mb-8">
-            Select symptoms, get a multi-model consensus, and receive WHO-aligned antibiotic guidance in seconds.
+            Three preset cases are one click away, or pick your own symptoms. Read the
+            methodology page first if you want to know what the numbers actually mean.
           </p>
           <Link
             to="/predict"
-            className="inline-block px-8 py-4 bg-teal text-white font-bold text-lg rounded-xl hover:bg-teal-light transition-colors shadow-lg"
+            className="inline-block px-8 py-4 bg-teal text-white font-bold text-lg rounded-xl hover:bg-teal-light transition-colors shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy"
           >
-            Start Diagnosis →
+            Start analysis →
           </Link>
         </div>
       </section>
 
       {/* ── Footer ── */}
       <footer className="bg-white border-t border-slate-200 py-6 px-6 text-center text-sm text-slate-400">
-        AMR Shield · Symptom-Driven Antibiotic Resistance DSS ·{' '}
-        <span className="text-slate-500">For educational and research purposes only</span>
+        AMR Shield · symptom-driven condition prediction with stewardship guidance
+        <br />
+        <span className="text-slate-500">
+          Research and teaching demonstration only. Not a medical device, and not for use with
+          real patients.
+        </span>
       </footer>
     </div>
   )

@@ -24,39 +24,51 @@ _METADATA_PATH = os.path.join(_MODELS_DIR, "model_metadata.json")
 def write_metadata(
     dataset_filename: str,
     dataset_rows: int,
+    unique_patterns: int,
     num_features: int,
     num_classes: int,
     sklearn_version: str,
     xgboost_version: str,
     model_scores: dict,
+    model_scores_weighted: Optional[dict] = None,
 ) -> None:
     """
     Write a model_metadata.json file to backend/models/.
 
-    Called at the end of the training notebook after all pkl files are saved.
+    Called at the end of the training script after all pkl files are saved.
 
     Args:
         dataset_filename (str): Name of the CSV file used for training.
-        dataset_rows (int): Number of rows in the cleaned dataset.
+        dataset_rows (int): Total number of rows in the CSV (including duplicates).
+        unique_patterns (int): Number of distinct binary feature vectors.
         num_features (int): Number of feature columns used.
         num_classes (int): Number of unique target classes.
         sklearn_version (str): scikit-learn version string at training time.
         xgboost_version (str): xgboost version string at training time.
-        model_scores (dict): Dict of {model_name: mean_f1_score} from CV.
+        model_scores (dict): Dict of {model_name: mean_f1_macro} from GroupKFold CV.
+        model_scores_weighted (dict | None): Dict of {model_name: mean_f1_weighted}.
     """
     metadata = {
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "dataset": {
             "filename": dataset_filename,
-            "rows_after_cleaning": dataset_rows,
+            "total_rows": dataset_rows,
+            "unique_patterns": unique_patterns,
             "num_features": num_features,
             "num_classes": num_classes,
+            "note": (
+                "total_rows reflects all CSV rows (each unique symptom combination "
+                "repeated ~120x). unique_patterns is the number of distinct binary "
+                "feature vectors. CV uses GroupKFold keyed on unique_patterns so no "
+                "pattern appears in both train and validation folds."
+            ),
         },
         "versions": {
             "scikit_learn": sklearn_version,
             "xgboost": xgboost_version,
         },
         "cross_validation_f1_macro": model_scores,
+        "cross_validation_f1_weighted": model_scores_weighted or {},
     }
 
     os.makedirs(_MODELS_DIR, exist_ok=True)

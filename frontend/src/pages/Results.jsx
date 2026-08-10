@@ -156,7 +156,7 @@ export default function Results() {
   }
 
   const {
-    comparison,
+    comparison = {},
     final_prediction,
     final_prediction_source,
     ensemble_confidence,

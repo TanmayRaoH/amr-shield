@@ -133,16 +133,16 @@ export default function About() {
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
                 <p className="font-bold mb-1">Do not read these scores as quality</p>
                 <p className="leading-relaxed">
-                  A perfect or near-perfect score on{' '}
-                  {dataset?.rows_after_cleaning ?? '304'} unique rows across{' '}
-                  {dataset?.num_classes ?? 41} classes — about{' '}
-                  {dataset
-                    ? Math.round(dataset.rows_after_cleaning / dataset.num_classes)
+                  The dataset has {dataset?.unique_patterns ?? '~304'} unique symptom patterns
+                  across {dataset?.num_classes ?? 41} classes —{' '}
+                  about{' '}
+                  {dataset?.unique_patterns && dataset?.num_classes
+                    ? Math.round(dataset.unique_patterns / dataset.num_classes)
                     : 7}{' '}
-                  examples per class — indicates memorisation of a small, highly repetitive
-                  dataset, not clinical accuracy. The cross-validation in{' '}
-                  <code className="bg-amber-100 px-1 rounded">run_training.py</code> also scores
-                  already-fitted models, which inflates the numbers further.
+                  distinct examples per class. Cross-validation now uses{' '}
+                  <strong>GroupKFold</strong> so no identical pattern appears in both train and
+                  validation folds, giving honest generalisation scores rather than memorisation
+                  scores.
                 </p>
               </div>
             </>
@@ -155,11 +155,8 @@ export default function About() {
           <dl className="grid sm:grid-cols-2 gap-4 text-sm">
             {[
               ['Source', 'Disease-Symptom Prediction dataset (itachi9604, Kaggle)'],
-              ['Raw rows', '4,920'],
-              [
-                'Unique rows after de-duplication',
-                `${dataset?.rows_after_cleaning ?? 304} — each symptom combination repeats roughly 120 times in the raw file`,
-              ],
+              ['Raw rows in CSV', `${dataset?.total_rows ?? 4920} (each unique symptom combination is repeated ~120 times)`],
+              ['Unique patterns', `${dataset?.unique_patterns ?? '~304'} distinct binary feature vectors across ${dataset?.num_classes ?? 41} classes`],
               ['Features', `${dataset?.num_features ?? 131} binary symptom columns`],
               ['Target classes', `${dataset?.num_classes ?? 41}`],
               ['Last trained', metadata?.trained_at ? new Date(metadata.trained_at).toLocaleString() : 'Unknown'],
@@ -183,8 +180,8 @@ export default function About() {
           <ul className="space-y-3 text-sm text-slate-600">
             {[
               [
-                'Many target classes are not infections',
-                'Diabetes, hypertension, heart attack, GERD, migraine, acne, allergy and others sit in the same 41-class output. Antibiotics are never appropriate for those, and the results page now says so explicitly instead of offering a drug.',
+                'Most target classes are not bacterial infections',
+                'Only 7 of the 41 classes are ones where antibiotics have a role. Diabetes, hypertension, heart attack, GERD, migraine, allergy and others sit in the same output. The results page now states when antibiotics are not indicated instead of offering a drug.',
               ],
               [
                 'The effective training set is tiny',
