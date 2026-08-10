@@ -213,7 +213,7 @@ export const groupSymptoms = (symptoms) => {
 export const PRESET_CASES = [
   {
     label: 'Suspected UTI',
-    description: 'Burning urination, bladder discomfort, foul-smelling urine',
+    description: 'Burning urination, bladder discomfort, foul-smelling urine — select a country for live WHO GLASS resistance data',
     symptoms: ['burning_micturition', 'bladder_discomfort', 'foul_smell_of_urine'],
   },
   {
@@ -223,7 +223,7 @@ export const PRESET_CASES = [
   },
   {
     label: 'Skin presentation',
-    description: 'Itching, rash, nodal eruptions, discoloured patches',
+    description: 'Itching, rash, nodal eruptions, discoloured patches — select a country for live WHO GLASS resistance data',
     symptoms: ['itching', 'skin_rash', 'nodal_skin_eruptions', 'dischromic__patches'],
   },
 ]

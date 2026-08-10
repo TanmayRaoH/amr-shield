@@ -133,7 +133,7 @@ def get_history(limit: int = 50) -> list:
         for row in rows:
             result.append({
                 "id": row["id"],
-                "timestamp": row["created_at"].isoformat() + "+00:00",
+                "timestamp": row["created_at"].strftime("%Y-%m-%dT%H:%M:%S"),
                 "symptoms": json.loads(row["symptoms"]),
                 "prediction": row["prediction"],
                 "confidence": row["confidence"],

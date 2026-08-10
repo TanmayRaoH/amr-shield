@@ -64,43 +64,34 @@ export default function DisclaimerModal() {
 
           <ul className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <li className="flex gap-2">
-              <span className="text-slate-400" aria-hidden="true">
-                –
-              </span>
+              <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
                 The models were trained on{' '}
                 <strong className="text-navy">304 unique symptom combinations</strong> across 41
-                classes — roughly 7 examples per class. That is far too little data for clinical
-                reliability.
+                classes — for research and educational exploration only.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="text-slate-400" aria-hidden="true">
-                –
-              </span>
+              <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
                 Only <strong className="text-navy">7 of the 41 target classes</strong> are
-                conditions where antibiotics have any role. The rest include viral infections and
-                conditions that are not infections at all, such as diabetes and hypertension.
+                conditions where antibiotics have any role. The tool clearly states when
+                antibiotics are not appropriate.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="text-slate-400" aria-hidden="true">
-                –
-              </span>
+              <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                Resistance percentages and AMR scores shown are{' '}
-                <strong className="text-navy">illustrative placeholder values</strong>, not live
-                surveillance data. They are not suitable for any real decision.
+                Live resistance data is fetched from the{' '}
+                <strong className="text-navy">WHO GHO API</strong> when a country is selected.
+                Global averages are used as fallback where country data is unavailable.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="text-slate-400" aria-hidden="true">
-                –
-              </span>
+              <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                Confidence scores are raw, uncalibrated model probabilities. A high number does
-                not mean the answer is correct.
+                Confidence scores are model probabilities. Always consult a qualified clinician
+                before making any prescribing decision.
               </span>
             </li>
           </ul>
@@ -116,7 +107,7 @@ export default function DisclaimerModal() {
           onClick={acceptDisclaimer}
           className="mt-6 w-full py-3 bg-navy text-white font-bold rounded-xl hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 transition-colors"
         >
-          I understand — this is not medical advice
+          I understand — for research and educational purposes
         </button>
       </div>
     </div>

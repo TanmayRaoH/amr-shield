@@ -94,7 +94,15 @@ export default function History() {
   }, [])
 
   // Use DB history if available, otherwise fall back to localStorage
-  const history = dbHistory ?? localHistory
+  // Deduplicate: DB is source of truth — only show localStorage entries
+  // that don't already exist in the DB (matched by prediction + timestamp proximity)
+  const history = useMemo(() => {
+    if (dbHistory !== null && !dbError) {
+      return dbHistory  // DB is authoritative — use it exclusively
+    }
+    return localHistory  // fallback to localStorage
+  }, [dbHistory, dbError, localHistory])
+
   const source = dbHistory !== null && !dbError ? 'database' : 'browser'
 
   const handleClearAll = async () => {

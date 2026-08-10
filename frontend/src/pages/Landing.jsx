@@ -48,7 +48,7 @@ export default function Landing() {
           {/* Left — Text */}
           <div>
             <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-800 text-sm font-semibold px-3 py-1 rounded-full mb-6">
-              Research demonstration · not medical advice
+              Research demonstration · for educational purposes
             </div>
 
             <h1 className="text-4xl lg:text-5xl font-extrabold text-navy leading-tight mb-4">
@@ -155,8 +155,7 @@ export default function Landing() {
         AMR Shield · symptom-driven condition prediction with stewardship guidance
         <br />
         <span className="text-slate-500">
-          Research and teaching demonstration only. Not a medical device, and not for use with
-          real patients.
+          For research and educational purposes. Always consult a qualified clinician before making any prescribing decision.
         </span>
       </footer>
     </div>

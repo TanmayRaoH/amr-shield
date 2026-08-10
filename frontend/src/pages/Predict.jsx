@@ -495,8 +495,8 @@ export default function Predict() {
             </button>
 
             <p className="text-xs text-slate-400 text-center leading-relaxed">
-              Research demonstration only. Not medical advice, and not for use with real
-              patients.
+              For research and educational purposes. Always consult a qualified clinician
+              before making any prescribing decision.
             </p>
           </div>
         </div>

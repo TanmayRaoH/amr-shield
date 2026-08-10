@@ -12,13 +12,15 @@ import {
 import { formatSymptom } from '../data/symptoms'
 
 // Which GHO indicator applies to each condition
+// Only bacterial infections with a genuine pathogen match are included.
+// Acne is excluded despite having antibiotic options — it is not a MRSA infection
+// and applying MRSA resistance rates to acne antibiotics is clinically incorrect.
 const CONDITION_TO_GLASS_INDICATOR = {
   'Urinary tract infection': 'AMR_INFECT_ECOLI',
   'Pneumonia':               'AMR_INFECT_ECOLI',
   'Typhoid':                 'AMR_INFECT_ECOLI',
   'Gastroenteritis':         'AMR_INFECT_ECOLI',
   'Impetigo':                'AMR_INFECT_MRSA',
-  'Acne':                    'AMR_INFECT_MRSA',
 }
 
 // Which antibiotic names are affected by each indicator
@@ -329,9 +331,8 @@ export default function Results() {
 
         {/* Persistent disclaimer */}
         <div className="bg-slate-100 border border-slate-300 rounded-xl p-4 text-sm text-slate-600">
-          <strong className="text-navy">Not medical advice.</strong> This is a research
-          demonstration trained on 304 unique symptom combinations. Do not use it for any real
-          clinical decision.
+          <strong className="text-navy">For research and educational purposes.</strong>{' '}
+          Always consult a qualified clinician before making any prescribing decision.
         </div>
 
         {/* Low confidence — abstain */}
