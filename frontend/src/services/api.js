@@ -72,8 +72,34 @@ export const fetchSymptoms = async () => {
   return data
 }
 
-export const runPrediction = async (symptoms) => {
-  const { data } = await client.post('/predict', { symptoms })
+/**
+ * Fetch live WHO GLASS resistance data for a country.
+ * Uses the WHO GHO OData API via the Flask proxy route.
+ *
+ * @param {string} countryCode  ISO 3166-1 alpha-3 (e.g. 'IND', 'GBR', 'USA')
+ * @param {string} [condition]  Optional condition name to filter relevant indicators
+ * @returns {Promise<object>}   GLASS data response
+ */
+export const fetchGlassData = async (countryCode, condition = '') => {
+  const params = condition ? `?condition=${encodeURIComponent(condition)}` : ''
+  const { data } = await client.get(`/glass/${countryCode}${params}`)
+  return data
+}
+
+export const runPrediction = async (symptoms, countryCode = null) => {
+  const payload = { symptoms }
+  if (countryCode) payload.country_code = countryCode
+  const { data } = await client.post('/predict', payload)
+  return data
+}
+
+export const fetchHistory = async (limit = 50) => {
+  const { data } = await client.get(`/history?limit=${limit}`)
+  return data
+}
+
+export const deleteHistory = async () => {
+  const { data } = await client.delete('/history')
   return data
 }
 

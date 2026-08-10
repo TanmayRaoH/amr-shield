@@ -25,6 +25,8 @@ from backend.config import Config
 from backend.routes.health import health_bp
 from backend.routes.predict import predict_bp
 from backend.routes.symptoms import symptoms_bp
+from backend.routes.glass import glass_bp
+from backend.routes.history import history_bp
 from backend.services.ml_service import ml_service
 from backend.utils.preprocessor import preprocessor_service
 
@@ -140,6 +142,8 @@ def create_app() -> Flask:
     app.register_blueprint(health_bp, url_prefix="/api/v1")
     app.register_blueprint(predict_bp, url_prefix="/api/v1")
     app.register_blueprint(symptoms_bp, url_prefix="/api/v1")
+    app.register_blueprint(glass_bp, url_prefix="/api/v1")
+    app.register_blueprint(history_bp, url_prefix="/api/v1")
 
     # --- Error handlers ---
     _register_error_handlers(app)

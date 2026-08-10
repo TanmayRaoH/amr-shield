@@ -28,6 +28,7 @@ export default function StatusBar() {
   const { health, healthLoading, healthError, knownSymptoms, knownConditions } = useAppStore()
 
   const modelsLoaded = health?.models_loaded ?? false
+  const dbConnected = health?.db_connected ?? false
   const trainedAt = health?.model_metadata?.trained_at
   const synced = timeAgo(trainedAt)
   const conditionCount = knownConditions.length || health?.model_metadata?.dataset?.num_classes || 41
@@ -52,10 +53,7 @@ export default function StatusBar() {
           ) : (
             <>
               <span className="relative flex h-2.5 w-2.5">
-                <span
-                  className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
-                  aria-hidden="true"
-                />
+                <span className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" aria-hidden="true" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
               </span>
               <span className="text-navy font-semibold">API connected</span>
@@ -69,11 +67,9 @@ export default function StatusBar() {
         <div className="flex items-center gap-1.5 text-slate-600">
           <span className="font-bold text-navy">3</span>
           <span>ML models</span>
-          <span
-            className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-              modelsLoaded ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-            }`}
-          >
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+            modelsLoaded ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+          }`}>
             {modelsLoaded ? 'Ready' : 'Not loaded'}
           </span>
         </div>
@@ -99,12 +95,27 @@ export default function StatusBar() {
 
         <Divider />
 
-        {/* Honest data provenance — no GLASS integration exists yet */}
+        {/* WHO GLASS — now genuinely live */}
         <div className="flex items-center gap-1.5">
-          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-600">
-            Resistance data: placeholder
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-teal opacity-75" aria-hidden="true" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal" />
+          </span>
+          <span className="text-navy font-semibold">WHO GLASS: Live</span>
+          <span className="text-slate-400 text-xs">· select country to activate</span>
+        </div>
+
+        <Divider />
+
+        {/* DB status */}
+        <div className="flex items-center gap-1.5">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+            dbConnected ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'
+          }`}>
+            {dbConnected ? '🗄 DB connected' : '🗄 DB offline'}
           </span>
         </div>
+
       </div>
     </div>
   )

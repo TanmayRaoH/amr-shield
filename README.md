@@ -78,9 +78,49 @@ copy .env.example .env         # Windows  (cp on macOS/Linux)
 Every environment variable has a working default, so `.env` is optional for local
 development.
 
-### Train the models
+### Database setup (MySQL)
 
-The repository does not ship the dataset or the trained artifacts — `.gitignore`
+AMR Shield uses MySQL for prediction history persistence and GLASS API response caching.
+
+1. Install MySQL Community Server (port 3306, default settings)
+2. Open MySQL Workbench or the MySQL CLI and run:
+
+```sql
+CREATE DATABASE IF NOT EXISTS amr_shield
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE amr_shield;
+
+CREATE TABLE IF NOT EXISTS prediction_history (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    symptoms      JSON NOT NULL,
+    prediction    VARCHAR(100) NOT NULL,
+    confidence    FLOAT,
+    agreement     INT,
+    total_models  INT,
+    country_code  VARCHAR(10),
+    full_result   JSON
+);
+
+CREATE TABLE IF NOT EXISTS glass_cache (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    cache_key       VARCHAR(100) UNIQUE NOT NULL,
+    country_code    VARCHAR(10) NOT NULL,
+    indicator_code  VARCHAR(50) NOT NULL,
+    resistance_pct  FLOAT,
+    data_year       INT,
+    fetched_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cache_key (cache_key),
+    INDEX idx_country   (country_code)
+);
+```
+
+3. Update your `.env` with your MySQL credentials (see `.env.example`)
+
+> The Flask server starts and functions normally without MySQL — DB failures are caught and logged without crashing the API. History and GLASS caching simply degrade gracefully.
+
+### Train the modelsThe repository does not ship the dataset or the trained artifacts — `.gitignore`
 excludes `data/raw/*.csv` and `backend/models/*.pkl`. You need to generate them.
 
 1. Download the

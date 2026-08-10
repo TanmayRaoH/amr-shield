@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAppStore from '../store/useAppStore'
-import { runPrediction } from '../services/api'
+import { runPrediction, fetchGlassData } from '../services/api'
 import {
   ALL_SYMPTOMS,
   PRESET_CASES,
@@ -11,15 +11,53 @@ import {
 } from '../data/symptoms'
 
 const MIN_SYMPTOMS = 3
-// The training cases average ~4 symptoms. Beyond roughly double that, the input
-// stops resembling anything the models were fitted on, so warn rather than block.
 const SYMPTOM_SOFT_LIMIT = 8
+
+// Age groups for context — affects contraindication warnings on results
+const AGE_GROUPS = [
+  { value: '', label: 'Select age group' },
+  { value: 'child', label: 'Child (under 12)' },
+  { value: 'adolescent', label: 'Adolescent (12–17)' },
+  { value: 'adult', label: 'Adult (18–64)' },
+  { value: 'elderly', label: 'Elderly (65+)' },
+]
+
+// ISO 3166-1 alpha-3 country codes for the GLASS-enrolled countries
+// with the best coverage in WHO GHO (covers most demo-likely selections)
+const COUNTRIES = [
+  { code: '', label: 'Select country (optional)' },
+  { code: 'IND', label: 'India' },
+  { code: 'GBR', label: 'United Kingdom' },
+  { code: 'USA', label: 'United States' },
+  { code: 'DEU', label: 'Germany' },
+  { code: 'FRA', label: 'France' },
+  { code: 'AUS', label: 'Australia' },
+  { code: 'NLD', label: 'Netherlands' },
+  { code: 'ZAF', label: 'South Africa' },
+  { code: 'BRA', label: 'Brazil' },
+  { code: 'CHN', label: 'China' },
+  { code: 'NGA', label: 'Nigeria' },
+  { code: 'KEN', label: 'Kenya' },
+  { code: 'UGA', label: 'Uganda' },
+  { code: 'THA', label: 'Thailand' },
+  { code: 'PAK', label: 'Pakistan' },
+  { code: 'BGD', label: 'Bangladesh' },
+  { code: 'PHL', label: 'Philippines' },
+  { code: 'JPN', label: 'Japan' },
+  { code: 'KOR', label: 'South Korea' },
+  { code: 'CAN', label: 'Canada' },
+  { code: 'ESP', label: 'Spain' },
+  { code: 'ITA', label: 'Italy' },
+  { code: 'SWE', label: 'Sweden' },
+  { code: 'ZWE', label: 'Zimbabwe' },
+]
 
 export default function Predict() {
   const navigate = useNavigate()
   const {
     selectedSymptoms, addSymptom, removeSymptom, clearSymptoms, setSymptoms,
     setPredictionResult, setPredictionLoading, setPredictionError, dismissPredictionError,
+    setGlassData, setGlassLoading, setGlassError, clearGlass,
     addToHistory, health, healthError,
     knownSymptoms, symptomsLoaded,
     predictionLoading, predictionError,
@@ -27,6 +65,12 @@ export default function Predict() {
 
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
+
+  // Patient context
+  const [ageGroup, setAgeGroup] = useState('')
+  const [penicillinAllergy, setPenicillinAllergy] = useState(false)
+  const [pregnant, setPregnant] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState('')
 
   const modelsLoaded = health?.models_loaded ?? false
 
@@ -55,18 +99,38 @@ export default function Predict() {
   const handleAnalyse = async () => {
     if (!canSubmit) return
     setPredictionLoading()
+    clearGlass()
     try {
-      const result = await runPrediction(selectedSymptoms)
-      setPredictionResult(result)
+      const result = await runPrediction(selectedSymptoms, selectedCountry || null)
+      // Attach patient context to the result so Results page can use it
+      const resultWithContext = {
+        ...result,
+        patientContext: {
+          ageGroup: ageGroup || null,
+          penicillinAllergy,
+          pregnant,
+          countryCode: selectedCountry || null,
+          countryLabel: COUNTRIES.find(c => c.code === selectedCountry)?.label || null,
+        },
+      }
+      setPredictionResult(resultWithContext)
       addToHistory({
         id: Date.now(),
         timestamp: new Date().toISOString(),
         symptoms: [...selectedSymptoms],
-        result,
+        result: resultWithContext,
       })
+
+      // Fire GLASS fetch in background if country selected — non-blocking
+      if (selectedCountry) {
+        setGlassLoading()
+        fetchGlassData(selectedCountry, result.final_prediction)
+          .then(setGlassData)
+          .catch((err) => setGlassError(err.userMessage || 'GLASS data unavailable'))
+      }
+
       navigate('/results')
     } catch (err) {
-      // api.js normalises every failure into a user-safe message.
       setPredictionError(err.userMessage || 'Prediction failed. Please try again.')
     }
   }
@@ -152,6 +216,103 @@ export default function Predict() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Patient context — affects contraindication warnings on Results */}
+        <div className="mb-6 bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+            Patient context <span className="text-slate-300 font-normal normal-case">(optional — used for contraindication warnings and live WHO GLASS resistance data)</span>
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Country — drives live GLASS resistance lookup */}
+            <div>
+              <label htmlFor="country" className="block text-xs font-medium text-slate-600 mb-1">
+                Country
+                <span className="ml-1 text-teal font-semibold">→ live WHO GLASS data</span>
+              </label>
+              <select
+                id="country"
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal bg-white"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+              {selectedCountry && (
+                <p className="text-xs text-teal mt-1">
+                  ✓ Live resistance rates will load from WHO GHO API
+                </p>
+              )}
+            </div>
+
+            {/* Age group */}
+            <div>
+              <label htmlFor="age-group" className="block text-xs font-medium text-slate-600 mb-1">
+                Age group
+              </label>
+              <select
+                id="age-group"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-navy bg-white"
+              >
+                {AGE_GROUPS.map((g) => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Penicillin allergy */}
+            <div className="flex items-center gap-3 pt-5">
+              <input
+                type="checkbox"
+                id="penicillin-allergy"
+                checked={penicillinAllergy}
+                onChange={(e) => setPenicillinAllergy(e.target.checked)}
+                className="w-4 h-4 accent-navy"
+              />
+              <label htmlFor="penicillin-allergy" className="text-sm text-slate-700 font-medium">
+                Penicillin allergy
+              </label>
+            </div>
+
+            {/* Pregnancy */}
+            <div className="flex items-center gap-3 pt-5">
+              <input
+                type="checkbox"
+                id="pregnant"
+                checked={pregnant}
+                onChange={(e) => setPregnant(e.target.checked)}
+                className="w-4 h-4 accent-navy"
+              />
+              <label htmlFor="pregnant" className="text-sm text-slate-700 font-medium">
+                Pregnant / possibly pregnant
+              </label>
+            </div>
+          </div>
+
+          {/* Active context warnings */}
+          {(penicillinAllergy || pregnant || ageGroup === 'child') && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {penicillinAllergy && (
+                <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 rounded-full">
+                  ⚠ Penicillin allergy — amoxicillin/ampicillin options will be flagged
+                </span>
+              )}
+              {pregnant && (
+                <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 rounded-full">
+                  ⚠ Pregnancy — tetracyclines, fluoroquinolones, and metronidazole (1st trimester) will be flagged
+                </span>
+              )}
+              {ageGroup === 'child' && (
+                <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 rounded-full">
+                  ⚠ Child — tetracyclines and fluoroquinolones contraindicated
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">

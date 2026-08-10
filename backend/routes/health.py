@@ -14,6 +14,7 @@ from flask import Blueprint, jsonify
 
 from backend.services.ml_service import ml_service
 from backend.services.model_metadata import read_metadata
+from backend.services.db_service import check_connection
 
 health_bp = Blueprint("health", __name__)
 
@@ -47,6 +48,7 @@ def health_check():
     payload = {
         "status": "healthy",
         "models_loaded": ml_service.models_loaded,
+        "db_connected": check_connection(),
         "version": "1.0.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "model_metadata": metadata,

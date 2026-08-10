@@ -64,6 +64,17 @@ const useAppStore = create(
       dismissPredictionError: () => set({ predictionError: null }),
       clearPrediction: () => set({ predictionResult: null, predictionError: null }),
 
+      // ── WHO GLASS live resistance data ──
+      // Fetched after a prediction lands, keyed by country code.
+      // Null means not yet fetched or country has no GLASS enrollment.
+      glassData: null,
+      glassLoading: false,
+      glassError: null,
+      setGlassData: (d) => set({ glassData: d, glassLoading: false, glassError: null }),
+      setGlassLoading: () => set({ glassLoading: true, glassError: null }),
+      setGlassError: (e) => set({ glassError: e, glassLoading: false }),
+      clearGlass: () => set({ glassData: null, glassError: null }),
+
       // ── History ──
       history: [],
       addToHistory: (entry) =>

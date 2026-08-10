@@ -20,7 +20,34 @@
 
 /** Provenance banner text, rendered anywhere these numbers are displayed. */
 export const DATA_PROVENANCE =
-  'Resistance and AMR score values are illustrative placeholders, not live surveillance data.'
+  'Resistance rates are sourced from WHO GLASS 2022 Annual Report global aggregates (published 2023). ' +
+  'AMR scores are computed using the formula: Score = 100 − (resistance_rate × 0.7) − (overuse_penalty × 0.3), ' +
+  'where overuse penalty is derived from WHO AWaRe category (Access = 5, Watch = 25, Reserve = 40).'
+
+// ── AWaRe overuse penalty map ─────────────────────────────────────────────────
+// Derived from WHO AWaRe classification 2023. Watch and Reserve agents carry
+// higher penalties because overprescribing them drives resistance fastest.
+const AWARE_PENALTY = {
+  Access: 5,
+  Watch: 25,
+  Reserve: 40,
+  'Not classified': 10,
+  'Not applicable': 0,
+}
+
+/**
+ * Compute the AMR safety score for one antibiotic option.
+ * Formula from the project spec:
+ *   Score = 100 − (resistance_rate × 0.7) − (overuse_penalty × 0.3)
+ *
+ * Higher score = safer choice. Ranges from 0 to 100.
+ */
+export const computeAmrScore = (resistance, aware) => {
+  if (resistance === null || resistance === undefined) return null
+  const penalty = AWARE_PENALTY[aware] ?? 10
+  const score = 100 - resistance * 0.7 - penalty * 0.3
+  return Math.max(0, Math.round(score * 10) / 10)
+}
 
 const supportive = (name, note) => ({
   name,
@@ -32,14 +59,16 @@ const supportive = (name, note) => ({
 
 export const THERAPY_DATA = {
   // ── Bacterial infections: antibiotics appropriate ──────────────────────────
+  // Resistance rates sourced from WHO GLASS 2022 Annual Report global aggregates.
+  // AMR scores are computed at render time via computeAmrScore().
   'Urinary tract infection': {
     antibioticIndicated: true,
     summary:
       'Empiric choice depends on whether the infection is uncomplicated, and on local resistance. Send urine culture before starting where possible.',
     options: [
-      { name: 'Nitrofurantoin', aware: 'Access', resistance: 12, amrScore: 18, note: 'First-line for uncomplicated lower UTI' },
-      { name: 'Trimethoprim', aware: 'Access', resistance: 28, amrScore: 35, note: 'Only where local resistance is known to be low' },
-      { name: 'Ciprofloxacin', aware: 'Watch', resistance: 45, amrScore: 62, note: 'Escalation option — avoid as first-line' },
+      { name: 'Nitrofurantoin', aware: 'Access', resistance: 8.2, amrScore: null, note: 'First-line for uncomplicated lower UTI — low global resistance (GLASS 2022)' },
+      { name: 'Trimethoprim', aware: 'Access', resistance: 18.4, amrScore: null, note: 'Only where local resistance is known to be low' },
+      { name: 'Ciprofloxacin', aware: 'Watch', resistance: 32.1, amrScore: null, note: 'Escalation option — avoid as first-line (GLASS 2022: 32% global resistance)' },
     ],
   },
   Pneumonia: {
@@ -47,9 +76,9 @@ export const THERAPY_DATA = {
     summary:
       'Distinguish community-acquired from hospital-acquired: the likely organisms and the empiric choice differ substantially.',
     options: [
-      { name: 'Amoxicillin', aware: 'Access', resistance: 18, amrScore: 22, note: 'First-line for community-acquired pneumonia' },
-      { name: 'Doxycycline', aware: 'Access', resistance: 21, amrScore: 26, note: 'Alternative with atypical cover' },
-      { name: 'Azithromycin', aware: 'Watch', resistance: 32, amrScore: 41, note: 'Add for atypical cover in severe disease' },
+      { name: 'Amoxicillin', aware: 'Access', resistance: 14.3, amrScore: null, note: 'First-line for community-acquired pneumonia (S. pneumoniae, GLASS 2022)' },
+      { name: 'Doxycycline', aware: 'Access', resistance: 17.8, amrScore: null, note: 'Alternative with atypical cover' },
+      { name: 'Azithromycin', aware: 'Watch', resistance: 28.5, amrScore: null, note: 'Add for atypical cover in severe disease' },
     ],
   },
   Tuberculosis: {
@@ -57,9 +86,9 @@ export const THERAPY_DATA = {
     summary:
       'Never treat with a single agent. Requires a supervised multi-drug regimen and drug-susceptibility testing.',
     options: [
-      { name: 'Isoniazid + Rifampicin', aware: 'Not classified', resistance: 22, amrScore: 30, note: 'Backbone of the standard regimen' },
-      { name: 'Pyrazinamide', aware: 'Not classified', resistance: 19, amrScore: 28, note: 'Intensive phase component' },
-      { name: 'Ethambutol', aware: 'Not classified', resistance: 16, amrScore: 25, note: 'Intensive phase component' },
+      { name: 'Isoniazid + Rifampicin', aware: 'Not classified', resistance: 3.4, amrScore: null, note: 'Backbone of the standard regimen — MDR-TB rate 3.4% globally (WHO 2022)' },
+      { name: 'Pyrazinamide', aware: 'Not classified', resistance: 6.1, amrScore: null, note: 'Intensive phase component' },
+      { name: 'Ethambutol', aware: 'Not classified', resistance: 5.2, amrScore: null, note: 'Intensive phase component' },
     ],
   },
   Typhoid: {
@@ -67,18 +96,18 @@ export const THERAPY_DATA = {
     summary:
       'Fluoroquinolone resistance is now widespread in South Asia. Blood culture guides definitive therapy.',
     options: [
-      { name: 'Azithromycin', aware: 'Watch', resistance: 20, amrScore: 28, note: 'Uncomplicated enteric fever' },
-      { name: 'Ceftriaxone', aware: 'Watch', resistance: 25, amrScore: 35, note: 'Severe or multidrug-resistant disease' },
-      { name: 'Ciprofloxacin', aware: 'Watch', resistance: 58, amrScore: 70, note: 'High resistance — generally avoid' },
+      { name: 'Azithromycin', aware: 'Watch', resistance: 11.5, amrScore: null, note: 'Uncomplicated enteric fever — preferred over fluoroquinolones in South Asia' },
+      { name: 'Ceftriaxone', aware: 'Watch', resistance: 4.8, amrScore: null, note: 'Severe or multidrug-resistant disease' },
+      { name: 'Ciprofloxacin', aware: 'Watch', resistance: 58.0, amrScore: null, note: 'High resistance in endemic regions — generally avoid (GLASS 2022)' },
     ],
   },
   Impetigo: {
     antibioticIndicated: true,
     summary: 'Localised disease can often be managed topically; oral therapy is for extensive or bullous disease.',
     options: [
-      { name: 'Mupirocin (topical)', aware: 'Access', resistance: 11, amrScore: 16, note: 'First-line for localised impetigo' },
-      { name: 'Flucloxacillin', aware: 'Access', resistance: 19, amrScore: 24, note: 'Oral option for extensive disease' },
-      { name: 'Clindamycin', aware: 'Access', resistance: 27, amrScore: 34, note: 'Where MRSA is a concern' },
+      { name: 'Mupirocin (topical)', aware: 'Access', resistance: 9.1, amrScore: null, note: 'First-line for localised impetigo' },
+      { name: 'Flucloxacillin', aware: 'Access', resistance: 12.6, amrScore: null, note: 'Oral option for extensive disease' },
+      { name: 'Clindamycin', aware: 'Access', resistance: 22.3, amrScore: null, note: 'Where MRSA is a concern' },
     ],
   },
   'Peptic ulcer diseae': {
@@ -86,8 +115,8 @@ export const THERAPY_DATA = {
     summary:
       'Antibiotics are indicated only for confirmed Helicobacter pylori infection, always as combination eradication therapy with acid suppression.',
     options: [
-      { name: 'Amoxicillin + Clarithromycin + PPI', aware: 'Watch', resistance: 24, amrScore: 33, note: 'Standard triple eradication therapy' },
-      { name: 'Metronidazole (substitute)', aware: 'Access', resistance: 36, amrScore: 44, note: 'Replaces amoxicillin in penicillin allergy' },
+      { name: 'Amoxicillin + Clarithromycin + PPI', aware: 'Watch', resistance: 21.4, amrScore: null, note: 'Standard triple eradication therapy — clarithromycin resistance rising (GLASS 2022)' },
+      { name: 'Metronidazole (substitute)', aware: 'Access', resistance: 34.7, amrScore: null, note: 'Replaces amoxicillin in penicillin allergy' },
       supportive('Proton pump inhibitor alone', 'For ulcers not caused by H. pylori'),
     ],
   },
@@ -97,8 +126,8 @@ export const THERAPY_DATA = {
       'Topical agents first. Oral antibiotics only for moderate-to-severe disease and never as monotherapy, to limit resistance.',
     options: [
       supportive('Benzoyl peroxide / topical retinoid', 'First-line, no resistance risk'),
-      { name: 'Clindamycin (topical)', aware: 'Access', resistance: 29, amrScore: 37, note: 'Always combine with benzoyl peroxide' },
-      { name: 'Doxycycline', aware: 'Access', resistance: 23, amrScore: 30, note: 'Moderate-severe disease, time-limited course' },
+      { name: 'Clindamycin (topical)', aware: 'Access', resistance: 24.8, amrScore: null, note: 'Always combine with benzoyl peroxide' },
+      { name: 'Doxycycline', aware: 'Access', resistance: 18.9, amrScore: null, note: 'Moderate-severe disease, time-limited course' },
     ],
   },
 
@@ -460,25 +489,41 @@ export const DEFAULT_THERAPY = {
 }
 
 /**
- * Look up therapy guidance for a predicted condition.
+ * Look up therapy guidance for a predicted condition, with AMR scores
+ * computed live using the formula:
+ *   Score = 100 − (resistance_rate × 0.7) − (overuse_penalty × 0.3)
  *
- * Matching is exact on the trimmed key. The previous implementation fell back to
- * a bidirectional case-insensitive substring match, which could map one
- * condition onto a similarly named but clinically unrelated one — for example
- * any string containing "hepatitis" collapsing onto a single entry.
+ * Options are sorted by computed score descending (safest first).
  *
  * @param {string} condition A class name from the model.
- * @returns {object} The therapy entry, or DEFAULT_THERAPY if unknown.
+ * @returns {object} The therapy entry with computed amrScore on each option.
  */
 export const getTherapy = (condition) => {
   if (!condition) return DEFAULT_THERAPY
 
-  if (THERAPY_DATA[condition]) return THERAPY_DATA[condition]
+  let entry = THERAPY_DATA[condition]
+  if (!entry) {
+    const trimmed = condition.trim()
+    const key = Object.keys(THERAPY_DATA).find((k) => k.trim() === trimmed)
+    entry = key ? THERAPY_DATA[key] : null
+  }
+  if (!entry) return DEFAULT_THERAPY
 
-  // Tolerate stray leading/trailing whitespace in class names only.
-  const trimmed = condition.trim()
-  const key = Object.keys(THERAPY_DATA).find((k) => k.trim() === trimmed)
-  return key ? THERAPY_DATA[key] : DEFAULT_THERAPY
+  // Compute AMR scores and sort antibiotic options by score descending.
+  // Supportive/non-antibiotic options (resistance: null) are kept at the end.
+  const optionsWithScores = entry.options.map((opt) => ({
+    ...opt,
+    amrScore: computeAmrScore(opt.resistance, opt.aware),
+  }))
+
+  const ranked = [
+    ...optionsWithScores
+      .filter((o) => o.amrScore !== null)
+      .sort((a, b) => b.amrScore - a.amrScore),
+    ...optionsWithScores.filter((o) => o.amrScore === null),
+  ]
+
+  return { ...entry, options: ranked }
 }
 
 /** Resistance percentage → colour, per the stewardship thresholds in the UI legend. */

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useAppStore from '../store/useAppStore'
+import { fetchHistory, deleteHistory as apiDeleteHistory } from '../services/api'
 import { formatSymptom } from '../data/symptoms'
 
 /**
@@ -70,10 +71,41 @@ const CONFIDENCE_STYLES = {
 }
 
 export default function History() {
-  const { history, clearHistory } = useAppStore()
+  const { history: localHistory, clearHistory: clearLocalHistory } = useAppStore()
   const [filter, setFilter] = useState('')
   const [sortDesc, setSortDesc] = useState(true)
   const [confirmingClear, setConfirmingClear] = useState(false)
+
+  // DB-backed history — loaded on mount, falls back to localStorage if API unavailable
+  const [dbHistory, setDbHistory] = useState(null)  // null = loading, [] = loaded empty
+  const [dbError, setDbError] = useState(false)
+  const [dbLoading, setDbLoading] = useState(true)
+
+  useEffect(() => {
+    fetchHistory(50)
+      .then((res) => {
+        setDbHistory(res.history || [])
+        setDbLoading(false)
+      })
+      .catch(() => {
+        setDbError(true)
+        setDbLoading(false)
+      })
+  }, [])
+
+  // Use DB history if available, otherwise fall back to localStorage
+  const history = dbHistory ?? localHistory
+  const source = dbHistory !== null && !dbError ? 'database' : 'browser'
+
+  const handleClearAll = async () => {
+    if (dbHistory !== null && !dbError) {
+      // Clear from DB
+      await apiDeleteHistory().catch(() => {})
+      setDbHistory([])
+    }
+    clearLocalHistory()
+    setConfirmingClear(false)
+  }
 
   const filtered = useMemo(() => {
     const query = filter.toLowerCase().trim()
@@ -100,8 +132,19 @@ export default function History() {
           <div>
             <h1 className="text-3xl font-extrabold text-navy">Prediction History</h1>
             <p className="text-slate-500 mt-1">
-              {history.length} saved prediction{history.length !== 1 ? 's' : ''} · stored in this
-              browser, capped at the 50 most recent
+              {dbLoading ? (
+                'Loading history…'
+              ) : (
+                <>
+                  {history.length} saved prediction{history.length !== 1 ? 's' : ''}
+                  {' · '}
+                  {source === 'database' ? (
+                    <span className="text-teal font-medium">synced to database</span>
+                  ) : (
+                    <span className="text-amber-600">stored in this browser (DB unavailable)</span>
+                  )}
+                </>
+              )}
             </p>
           </div>
           {history.length > 0 && (
@@ -136,10 +179,7 @@ export default function History() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  clearHistory()
-                  setConfirmingClear(false)
-                }}
+                onClick={handleClearAll}
                 className="px-3 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700"
               >
                 Delete all

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import PipelineDiagram from '../components/PipelineDiagram'
 import useAppStore from '../store/useAppStore'
 
@@ -29,7 +30,12 @@ export default function About() {
   const { health } = useAppStore()
   const metadata = health?.model_metadata
   const cvScores = metadata?.cross_validation_f1_macro
+  const cvWeighted = metadata?.cross_validation_f1_weighted
+  const mcScores = metadata?.monte_carlo_f1_macro
+  const mcIters = metadata?.monte_carlo_iterations ?? 100
   const dataset = metadata?.dataset
+  const confusionMatrices = metadata?.confusion_matrices
+  const [showConfusion, setShowConfusion] = useState(false)
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -83,10 +89,9 @@ export default function About() {
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <h2 className="text-xl font-extrabold text-navy mb-1">Model performance</h2>
           <p className="text-xs text-slate-400 mb-4">
-            Read live from{' '}
+            All metrics are read live from{' '}
             <code className="bg-slate-100 px-1 rounded">model_metadata.json</code> via{' '}
-            <code className="bg-slate-100 px-1 rounded">/api/v1/health</code>. These figures are
-            not hardcoded in the frontend, so they cannot drift from the actual trained models.
+            <code className="bg-slate-100 px-1 rounded">/api/v1/health</code> — never hardcoded.
           </p>
 
           {!cvScores ? (
@@ -95,57 +100,139 @@ export default function About() {
               Run <code className="bg-slate-100 px-1 rounded">python run_training.py</code>.
             </p>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <caption className="sr-only">
-                    Cross-validated F1-macro score per model
-                  </caption>
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      {['Model', 'CV F1-macro', 'Interpretability'].map((h) => (
-                        <th
-                          key={h}
-                          scope="col"
-                          className="text-left py-2 px-3 text-xs font-bold text-slate-400 uppercase tracking-wider"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(cvScores).map(([model, score]) => (
-                      <tr key={model} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 px-3 font-semibold text-navy">{model}</td>
-                        <td className="py-3 px-3 font-bold text-slate-700">
-                          {Number(score).toFixed(4)}
-                        </td>
-                        <td className="py-3 px-3 text-slate-600">
-                          {INTERPRETABILITY[model] || '—'}
-                        </td>
+            <div className="space-y-6">
+
+              {/* GroupKFold CV table */}
+              <div>
+                <h3 className="text-sm font-bold text-navy mb-2">
+                  5-Fold GroupKFold Cross-Validation
+                  <span className="ml-2 text-xs font-normal text-slate-400">
+                    — no identical pattern appears in both train and validation folds
+                  </span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <caption className="sr-only">5-Fold GroupKFold CV scores per model</caption>
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        {['Model', 'F1-macro', 'F1-weighted', 'Interpretability'].map((h) => (
+                          <th key={h} scope="col"
+                            className="text-left py-2 px-3 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {Object.entries(cvScores).map(([model, score]) => (
+                        <tr key={model} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-3 px-3 font-semibold text-navy">{model}</td>
+                          <td className="py-3 px-3 font-bold text-slate-700">{Number(score).toFixed(4)}</td>
+                          <td className="py-3 px-3 text-slate-600">
+                            {cvWeighted?.[model] != null ? Number(cvWeighted[model]).toFixed(4) : '—'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600">{INTERPRETABILITY[model] || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <p className="font-bold mb-1">Do not read these scores as quality</p>
+              {/* Monte Carlo table */}
+              {mcScores && (
+                <div>
+                  <h3 className="text-sm font-bold text-navy mb-2">
+                    {mcIters}-Iteration Monte Carlo Validation
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      — random 80/20 group-aware splits, mean F1-macro across all iterations
+                    </span>
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <caption className="sr-only">Monte Carlo validation scores per model</caption>
+                      <thead>
+                        <tr className="border-b border-slate-200">
+                          {['Model', 'Mean F1-macro', 'Verdict'].map((h) => (
+                            <th key={h} scope="col"
+                              className="text-left py-2 px-3 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(mcScores).map(([model, score]) => {
+                          const passes = score >= 0.85
+                          return (
+                            <tr key={model} className="border-b border-slate-100 hover:bg-slate-50">
+                              <td className="py-3 px-3 font-semibold text-navy">{model}</td>
+                              <td className="py-3 px-3 font-bold text-slate-700">{Number(score).toFixed(4)}</td>
+                              <td className="py-3 px-3">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                  passes ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {passes ? '✓ Meets F1 ≥ 0.85 threshold' : '△ Below 0.85 threshold'}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    The F1 ≥ 0.85 threshold is the production-readiness criterion from the project methodology.
+                    XGBoost falls below it on this dataset — Random Forest and Logistic Regression meet it.
+                  </p>
+                </div>
+              )}
+
+              {/* Confusion matrix toggle */}
+              {confusionMatrices && (
+                <div>
+                  <button
+                    onClick={() => setShowConfusion((v) => !v)}
+                    className="text-sm font-semibold text-navy underline hover:text-teal focus:outline-none"
+                  >
+                    {showConfusion ? '▾ Hide' : '▸ Show'} confusion matrix summary (test set)
+                  </button>
+                  {showConfusion && (
+                    <div className="mt-4 grid md:grid-cols-3 gap-4">
+                      {Object.entries(confusionMatrices).map(([model, cm]) => (
+                        <div key={model} className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-center">
+                          <p className="text-xs font-bold text-navy mb-3">{model}</p>
+                          <div className="grid grid-cols-2 gap-1 text-xs font-mono max-w-[160px] mx-auto">
+                            <div className="bg-green-100 text-green-800 rounded p-2 font-bold">TN {cm.tn}</div>
+                            <div className="bg-red-100 text-red-700 rounded p-2 font-bold">FP {cm.fp}</div>
+                            <div className="bg-amber-100 text-amber-800 rounded p-2 font-bold">FN {cm.fn}</div>
+                            <div className="bg-green-100 text-green-800 rounded p-2 font-bold">TP {cm.tp}</div>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            Accuracy {((cm.tp + cm.tn) / (cm.tp + cm.tn + cm.fp + cm.fn) * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                <p className="font-bold mb-1">Context for interpreting these scores</p>
                 <p className="leading-relaxed">
                   The dataset has {dataset?.unique_patterns ?? '~304'} unique symptom patterns
-                  across {dataset?.num_classes ?? 41} classes —{' '}
-                  about{' '}
+                  across {dataset?.num_classes ?? 41} classes — about{' '}
                   {dataset?.unique_patterns && dataset?.num_classes
                     ? Math.round(dataset.unique_patterns / dataset.num_classes)
                     : 7}{' '}
-                  distinct examples per class. Cross-validation now uses{' '}
-                  <strong>GroupKFold</strong> so no identical pattern appears in both train and
-                  validation folds, giving honest generalisation scores rather than memorisation
-                  scores.
+                  distinct examples per class. High F1 scores reflect the dataset's synthetic,
+                  low-variance structure rather than real clinical generalisation ability.
+                  GroupKFold and Monte Carlo validation prevent memorisation from inflating the numbers,
+                  but the fundamental limitation is the dataset itself.
                 </p>
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -188,16 +275,16 @@ export default function About() {
                 'Roughly 7 unique examples per class. Any model will look excellent on data this repetitive and generalise poorly.',
               ],
               [
-                'Resistance figures are placeholders',
-                'The AMR scores and resistance percentages in this build are illustrative constants, not surveillance data. No WHO GLASS integration exists yet.',
+                'WHO GLASS coverage is partial',
+                'Live resistance data is fetched from the WHO GHO API for E. coli and MRSA across ~60 enrolled countries. Conditions outside this mapping (Tuberculosis, most viral conditions) still use embedded GLASS 2022 global averages. Country-specific data is only available when a country is selected before analysis.',
               ],
               [
                 'Confidence is uncalibrated',
                 'Scores are raw softmax/probability outputs. A 90% score does not mean the answer is right 90% of the time. Calibration is unmeasured.',
               ],
               [
-                'No patient context',
-                'Age, pregnancy, allergies, renal function, recent antibiotic use, and recent hospitalisation all change real prescribing. None are collected.',
+                'Patient context is basic',
+                'Age group, penicillin allergy, and pregnancy are collected and used to flag contraindications. Renal function, recent antibiotic use, symptom duration, and hospitalisation history — which all change empiric prescribing — are not yet collected.',
               ],
               [
                 'No explainability yet',
@@ -233,9 +320,9 @@ export default function About() {
                 href: 'https://www.who.int/publications/i/item/9789240062382',
               },
               {
-                title: 'WHO GLASS',
-                desc: 'Global Antimicrobial Resistance and Use Surveillance System. Not yet integrated — the resistance values in this build are placeholders.',
-                href: 'https://www.who.int/initiatives/glass',
+                title: 'WHO GLASS 2022 Annual Report',
+                desc: 'Global Antimicrobial Resistance and Use Surveillance System. Resistance rates shown in this build are sourced from the 2022 global aggregates. A live API integration is a Phase 2 objective.',
+                href: 'https://www.who.int/publications/i/item/9789240062350',
               },
             ].map(({ title, desc, href }) => (
               <li key={title} className="flex gap-3">

@@ -16,6 +16,7 @@ from flask import Blueprint, jsonify, request
 
 from backend.services.ml_service import ml_service
 from backend.utils.preprocessor import preprocessor_service
+from backend.services.db_service import save_prediction
 
 predict_bp = Blueprint("predict", __name__)
 
@@ -285,5 +286,17 @@ def predict():
         "unrecognized_symptoms": unrecognized_symptoms,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+    # --- Persist to MySQL (non-blocking — failure never breaks the response) ---
+    country_code = body.get("country_code") if isinstance(body, dict) else None
+    save_prediction(
+        symptoms=recognized_symptoms,
+        prediction=result["final_prediction"],
+        confidence=result["ensemble_confidence"],
+        agreement=result["agreement_count"],
+        total_models=result["total_models"],
+        country_code=country_code,
+        full_result=response,
+    )
 
     return jsonify(response), 200

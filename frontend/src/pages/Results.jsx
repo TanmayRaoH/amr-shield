@@ -7,8 +7,25 @@ import {
   getTherapy,
   getAwareColor,
   getResistanceColor,
+  computeAmrScore,
 } from '../data/antibiotics'
 import { formatSymptom } from '../data/symptoms'
+
+// Which GHO indicator applies to each condition
+const CONDITION_TO_GLASS_INDICATOR = {
+  'Urinary tract infection': 'AMR_INFECT_ECOLI',
+  'Pneumonia':               'AMR_INFECT_ECOLI',
+  'Typhoid':                 'AMR_INFECT_ECOLI',
+  'Gastroenteritis':         'AMR_INFECT_ECOLI',
+  'Impetigo':                'AMR_INFECT_MRSA',
+  'Acne':                    'AMR_INFECT_MRSA',
+}
+
+// Which antibiotic names are affected by each indicator
+const INDICATOR_TO_ANTIBIOTICS = {
+  'AMR_INFECT_ECOLI': ['ceftriaxone', 'cefixime', 'amoxicillin', 'ampicillin', 'ciprofloxacin', 'trimethoprim'],
+  'AMR_INFECT_MRSA':  ['flucloxacillin', 'clindamycin', 'mupirocin'],
+}
 
 // ── Confidence Donut ────────────────────────────────────────────────────────
 function ConfidenceDonut({ confidence, color = '#0F2D5C' }) {
@@ -80,19 +97,22 @@ function ModelCard({ name, prediction, confidence, agrees }) {
 }
 
 // ── Therapy Card ────────────────────────────────────────────────────────────
-function TherapyCard({ option, rank }) {
+function TherapyCard({ option, rank, contraindicationReason }) {
   const { name, amrScore, resistance, aware, note } = option
   const hasResistanceData = resistance !== null && resistance !== undefined
-  const resColor = getResistanceColor(resistance)
+  const resColor = contraindicationReason ? '#94A3B8' : getResistanceColor(resistance)
   const awareColor = getAwareColor(aware)
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 card-hover">
+    <div className={`bg-white rounded-xl border p-5 card-hover ${contraindicationReason ? 'border-red-200 opacity-75' : 'border-slate-200'}`}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div>
           <span className="text-xs font-bold text-slate-400">#{rank}</span>
           <h4 className="font-extrabold text-navy text-base">{name}</h4>
           <p className="text-xs text-slate-500 mt-0.5">{note}</p>
+          {contraindicationReason && (
+            <p className="text-xs text-red-600 font-semibold mt-1">⚠ {contraindicationReason}</p>
+          )}
         </div>
         {aware !== 'Not applicable' && (
           <span
@@ -104,11 +124,11 @@ function TherapyCard({ option, rank }) {
         )}
       </div>
 
-      {hasResistanceData && (
+        {hasResistanceData && (
         <>
           <div className="mb-3">
             <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Resistance rate (illustrative)</span>
+              <span>Resistance rate (WHO GLASS 2022)</span>
               <span style={{ color: resColor }} className="font-bold">
                 {resistance}%
               </span>
@@ -132,6 +152,9 @@ function TherapyCard({ option, rank }) {
               {amrScore}
             </span>
           </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Score = 100 − (resistance × 0.7) − (overuse penalty × 0.3)
+          </p>
         </>
       )}
     </div>
@@ -141,7 +164,7 @@ function TherapyCard({ option, rank }) {
 // ── Main Results Page ───────────────────────────────────────────────────────
 export default function Results() {
   const navigate = useNavigate()
-  const { predictionResult, selectedSymptoms, clearSymptoms, clearPrediction } = useAppStore()
+  const { predictionResult, selectedSymptoms, clearSymptoms, clearPrediction, glassData, glassLoading } = useAppStore()
 
   useEffect(() => {
     if (!predictionResult) navigate('/predict', { replace: true })
@@ -168,15 +191,70 @@ export default function Results() {
     differentials = [],
     unrecognized_symptoms,
     recognized_symptoms,
+    patientContext = {},
   } = predictionResult
+
+  const { ageGroup, penicillinAllergy, pregnant } = patientContext
+
+  // Drugs flagged as contraindicated based on patient context
+  const PENICILLIN_DRUGS = ['amoxicillin', 'ampicillin', 'flucloxacillin', 'penicillin']
+  const TETRACYCLINE_DRUGS = ['doxycycline', 'tetracycline', 'minocycline']
+  const FLUOROQUINOLONE_DRUGS = ['ciprofloxacin', 'levofloxacin', 'moxifloxacin', 'ofloxacin']
+  const PREGNANCY_CAUTION = ['metronidazole', 'trimethoprim']
+
+  const isContraindicated = (drugName) => {
+    const name = drugName.toLowerCase()
+    if (penicillinAllergy && PENICILLIN_DRUGS.some((d) => name.includes(d))) return 'Penicillin allergy'
+    if ((ageGroup === 'child' || pregnant) && TETRACYCLINE_DRUGS.some((d) => name.includes(d)))
+      return ageGroup === 'child' ? 'Contraindicated in children' : 'Avoid in pregnancy'
+    if ((ageGroup === 'child' || pregnant) && FLUOROQUINOLONE_DRUGS.some((d) => name.includes(d)))
+      return ageGroup === 'child' ? 'Contraindicated in children' : 'Avoid in pregnancy'
+    if (pregnant && PREGNANCY_CAUTION.some((d) => name.includes(d)))
+      return 'Use with caution in pregnancy'
+    return null
+  }
 
   const therapy = getTherapy(final_prediction)
   const options = therapy.options || []
 
+  // ── WHO GLASS live resistance overlay ─────────────────────────────────────
+  // If live GLASS data arrived for this country+condition, replace the static
+  // resistance value with the live one and recompute the AMR score.
+  const glassIndicator = CONDITION_TO_GLASS_INDICATOR[final_prediction]
+  const liveIndicator = glassData?.data?.[glassIndicator]
+  const liveResistancePct = liveIndicator?.resistance_pct ?? null
+  const liveYear = liveIndicator?.year ?? null
+  const liveSource = liveIndicator?.source ?? null
+  const liveCountry = patientContext?.countryLabel ?? glassData?.country_code ?? null
+  const glassAffectedAntibiotics = glassIndicator ? (INDICATOR_TO_ANTIBIOTICS[glassIndicator] ?? []) : []
+
+  // Apply live resistance to affected antibiotics, recompute score
+  const optionsWithLiveData = options.map((opt) => {
+    if (
+      liveResistancePct !== null &&
+      glassAffectedAntibiotics.some((a) => opt.name.toLowerCase().includes(a))
+    ) {
+      const liveScore = computeAmrScore(liveResistancePct, opt.aware)
+      return {
+        ...opt,
+        resistance: liveResistancePct,
+        amrScore: liveScore,
+        isLiveData: true,
+      }
+    }
+    return { ...opt, isLiveData: false }
+  })
+
+  // Re-sort: antibiotics with computed scores first, descending
+  const sortedOptions = [
+    ...optionsWithLiveData.filter(o => o.amrScore !== null).sort((a, b) => b.amrScore - a.amrScore),
+    ...optionsWithLiveData.filter(o => o.amrScore === null),
+  ]
+
   // Only antibacterial entries carry resistance data worth charting.
-  const chartData = options
+  const chartData = sortedOptions
     .filter((o) => o.resistance !== null && o.resistance !== undefined && o.resistance > 0)
-    .map((o) => ({ name: o.name.split(/[\s(+]/)[0], resistance: o.resistance }))
+    .map((o) => ({ name: o.name.split(/[\s(+]/)[0], resistance: o.resistance, isLive: o.isLiveData }))
 
   const topAware = options.find((o) => o.aware === 'Watch' || o.aware === 'Reserve')
   const agreementCount = agreement_count ?? agreeing_models.length
@@ -213,6 +291,41 @@ export default function Results() {
             ← New analysis
           </button>
         </div>
+
+        {/* WHO GLASS live data banner */}
+        {glassLoading && (
+          <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 flex items-center gap-3">
+            <span className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+            <p className="text-sm text-teal font-medium">Fetching live WHO GLASS resistance data…</p>
+          </div>
+        )}
+
+        {liveResistancePct !== null && (
+          <div className="bg-teal/5 border border-teal/30 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-teal font-bold text-xl" aria-hidden="true">◎</span>
+            <div>
+              <p className="font-bold text-teal">WHO GLASS live data loaded</p>
+              <p className="text-sm text-slate-700 mt-0.5">
+                {liveIndicator?.label} resistance in{' '}
+                <strong>{liveCountry}</strong>:{' '}
+                <strong className="text-navy">{liveResistancePct}%</strong>{' '}
+                ({liveYear}) — antibiotic scores and rankings have been updated to reflect
+                your country's actual surveillance data.
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Source: {liveSource} ·{' '}
+                <a
+                  href="https://data.who.int/dashboards/amr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-teal"
+                >
+                  data.who.int/dashboards/amr
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Persistent disclaimer */}
         <div className="bg-slate-100 border border-slate-300 rounded-xl p-4 text-sm text-slate-600">
@@ -393,10 +506,78 @@ export default function Results() {
           </h3>
           {therapy.summary && <p className="text-sm text-slate-500 mb-4">{therapy.summary}</p>}
           <div className="grid md:grid-cols-3 gap-4">
-            {options.map((option, i) => (
-              <TherapyCard key={option.name} option={option} rank={i + 1} />
+            {sortedOptions.map((option, i) => (
+              <TherapyCard
+                key={option.name}
+                option={option}
+                rank={i + 1}
+                contraindicationReason={isContraindicated ? isContraindicated(option.name) : null}
+              />
             ))}
           </div>
+
+          {/* AMR Scoring Engine breakdown table — matches Fig 5.4 from project report */}
+          {therapy.antibioticIndicated && sortedOptions.some((o) => o.amrScore !== null) && (
+            <div className="mt-6 bg-white rounded-xl border border-slate-200 overflow-x-auto">
+              <div className="px-5 pt-4 pb-2">
+                <h4 className="text-sm font-extrabold text-navy">AMR Scoring Engine breakdown</h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Formula: Score = 100 − (resistance_rate × 0.7) − (overuse_penalty × 0.3)
+                  · Overuse penalty: Access = 5, Watch = 25, Reserve = 40
+                  {liveResistancePct !== null && (
+                    <span className="ml-2 text-teal font-semibold">
+                      · ◎ Scores marked with ◎ use live WHO GLASS data for {liveCountry} ({liveYear})
+                    </span>
+                  )}
+                </p>
+              </div>
+              <table className="w-full text-xs">
+                <caption className="sr-only">AMR scoring engine output for each antibiotic option</caption>
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    {['Antibiotic', 'AWaRe', 'Resistance %', 'Overuse Penalty', 'AMR Score', 'Recommendation'].map((h) => (
+                      <th key={h} scope="col"
+                        className="text-left py-2 px-4 font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedOptions.filter((o) => o.amrScore !== null).map((o, i) => {
+                    const AWARE_PENALTY = { Access: 5, Watch: 25, Reserve: 40, 'Not classified': 10 }
+                    const penalty = AWARE_PENALTY[o.aware] ?? 10
+                    const recommended = i < 3
+                    return (
+                      <tr key={o.name}
+                        className={`border-b border-slate-100 ${recommended ? '' : 'opacity-60'}`}>
+                        <td className="py-2.5 px-4 font-semibold text-navy">
+                          {o.name}
+                          {o.isLiveData && (
+                            <span className="ml-1 text-teal text-xs font-bold" title="Using live WHO GLASS data">◎</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-600">{o.aware}</td>
+                        <td className="py-2.5 px-4 font-bold"
+                          style={{ color: o.resistance < 20 ? '#16A34A' : o.resistance < 40 ? '#D97706' : '#DC2626' }}>
+                          {o.resistance}%
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-600">{penalty}</td>
+                        <td className="py-2.5 px-4 font-bold text-navy">{o.amrScore}</td>
+                        <td className="py-2.5 px-4">
+                          {recommended ? (
+                            <span className="text-green-700 font-bold">✓ Recommended #{i + 1}</span>
+                          ) : (
+                            <span className="text-red-500 font-medium">✗ Not recommended</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Section D — Resistance chart */}

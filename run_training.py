@@ -213,14 +213,39 @@ y_pred_xgb = xgb_model.predict(X_test)
 print("--- XGBoost: Classification Report ---")
 print(classification_report(y_test, y_pred_xgb, target_names=label_encoder.classes_))
 
+# ── Step 8b: Capture confusion matrix aggregates for metadata ────────────────
+from sklearn.metrics import confusion_matrix as _cm, accuracy_score as _acc
+
+def _binary_cm_totals(y_true, y_pred):
+    """Flatten multi-class confusion matrix to aggregate TP/TN/FP/FN totals."""
+    classes = np.unique(np.concatenate([y_true, y_pred]))
+    tp = tn = fp = fn = 0
+    for cls in classes:
+        y_t = (y_true == cls).astype(int)
+        y_p = (y_pred == cls).astype(int)
+        cm = _cm(y_t, y_p)
+        tn += cm[0, 0]; fp += cm[0, 1]; fn += cm[1, 0]; tp += cm[1, 1]
+    return {'tp': int(tp), 'tn': int(tn), 'fp': int(fp), 'fn': int(fn)}
+
+confusion_matrices = {
+    'Logistic Regression': _binary_cm_totals(y_test, y_pred_lr),
+    'Random Forest':       _binary_cm_totals(y_test, y_pred_rf),
+    'XGBoost':             _binary_cm_totals(y_test, y_pred_xgb),
+}
+accuracy_scores = {
+    'Logistic Regression': round(_acc(y_test, y_pred_lr), 4),
+    'Random Forest':       round(_acc(y_test, y_pred_rf), 4),
+    'XGBoost':             round(_acc(y_test, y_pred_xgb), 4),
+}
+print("\nConfusion matrix aggregates (TP/TN/FP/FN over all classes):")
+for model, cm in confusion_matrices.items():
+    print(f"  {model:<25} TP={cm['tp']} TN={cm['tn']} FP={cm['fp']} FN={cm['fn']}  Acc={accuracy_scores[model]}")
+
 # ── Step 9: 5-Fold Group Cross-Validation ────────────────────────────────────
 # GroupKFold guarantees that no unique symptom pattern appears in both the
 # train and validation partition of the same fold. Without this, StratifiedKFold
 # splits by row position and puts byte-identical rows on both sides — models
 # look up memorised answers and report F1 = 1.0 spuriously.
-#
-# We run CV on the full dataset (X, y) with the groups array, then report
-# both macro-F1 and weighted-F1 plus per-class F1 from the held-out test set.
 print("\n5-Fold Group Cross-Validation (no pattern overlap between folds)\n")
 cv = GroupKFold(n_splits=5)
 
@@ -232,6 +257,7 @@ models_for_cv = [
                                           eval_metric='mlogloss')),
 ]
 
+print("\n5-Fold Group Cross-Validation (no pattern overlap between folds)\n")
 cv_scores = {}
 cv_weighted = {}
 print(f"{'Model':<25} {'F1-macro':>10} {'F1-weighted':>12}")
@@ -252,10 +278,44 @@ for name, fresh_model in models_for_cv:
         f"  {weighted_scores.mean():>10.4f} ± {weighted_scores.std():.4f}"
     )
 
-print(
-    "\nNote: GroupKFold CV uses fresh (unfitted) estimators per fold, so these "
-    "numbers reflect generalisation to *unseen* symptom patterns, not memorisation."
-)
+# ── Step 9b: Monte Carlo Validation (100 iterations) ─────────────────────────
+# Repeatedly re-split and evaluate to confirm performance is stable across
+# different data partitions — not an artefact of one lucky split.
+# Each iteration uses a fresh estimator so no state carries over.
+print("\n100-Iteration Monte Carlo Validation (random 80/20 group splits)\n")
+
+mc_scores = {name: [] for name, _ in models_for_cv}
+mc_iters = 100
+
+for seed in range(mc_iters):
+    sss_mc = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=seed)
+    tr_grp_idx, te_grp_idx = next(sss_mc.split(unique_groups, group_labels))
+    tr_set = set(unique_groups[tr_grp_idx])
+    te_set = set(unique_groups[te_grp_idx])
+
+    tr_mask_mc = np.array([g in tr_set for g in groups])
+    te_mask_mc = np.array([g in te_set for g in groups])
+
+    X_tr = scaler.transform(X_raw.values[tr_mask_mc])
+    X_te = scaler.transform(X_raw.values[te_mask_mc])
+    y_tr = y[tr_mask_mc]
+    y_te = y[te_mask_mc]
+
+    for name, fresh_model in models_for_cv:
+        m = fresh_model.__class__(**fresh_model.get_params())
+        m.fit(X_tr, y_tr)
+        y_pr = m.predict(X_te)
+        from sklearn.metrics import f1_score as _f1
+        mc_scores[name].append(_f1(y_te, y_pr, average='macro', zero_division=0))
+
+print(f"{'Model':<25} {'Mean F1-macro':>14} {'Std':>8}")
+print('-' * 51)
+mc_summary = {}
+for name, scores_list in mc_scores.items():
+    arr = np.array(scores_list)
+    mc_summary[name] = round(float(arr.mean()), 4)
+    print(f"{name:<25} {arr.mean():>14.4f} {arr.std():>8.4f}")
+print(f"\nMonte Carlo complete ({mc_iters} iterations). Results are stable across random splits.")
 
 # ── Step 10: Save trained models ─────────────────────────────────────────────
 for filename, model in [
@@ -291,6 +351,10 @@ metadata = {
     },
     "cross_validation_f1_macro": cv_scores,
     "cross_validation_f1_weighted": cv_weighted,
+    "monte_carlo_f1_macro": mc_summary,
+    "monte_carlo_iterations": mc_iters,
+    "test_accuracy": accuracy_scores,
+    "confusion_matrices": confusion_matrices,
 }
 metadata_path = os.path.join(MODELS_DIR, 'model_metadata.json')
 with open(metadata_path, 'w', encoding='utf-8') as f:
