@@ -189,7 +189,7 @@ lr_model = LogisticRegression(max_iter=1000, random_state=42)
 lr_model.fit(X_train, y_train)
 y_pred_lr = lr_model.predict(X_test)
 print("--- Logistic Regression: Classification Report ---")
-print(classification_report(y_test, y_pred_lr, target_names=label_encoder.classes_))
+print(classification_report(y_test, y_pred_lr, target_names=label_encoder.classes_, labels=np.arange(len(label_encoder.classes_))))
 
 # ── Step 7: Train Random Forest ───────────────────────────────────────────────
 # n_estimators reduced from 200 → 50 for deployment (RAM fit on Render free tier).
@@ -201,7 +201,7 @@ rf_model = RandomForestClassifier(n_estimators=50, random_state=42)
 rf_model.fit(X_train, y_train)
 y_pred_rf = rf_model.predict(X_test)
 print("--- Random Forest: Classification Report ---")
-print(classification_report(y_test, y_pred_rf, target_names=label_encoder.classes_))
+print(classification_report(y_test, y_pred_rf, target_names=label_encoder.classes_, labels=np.arange(len(label_encoder.classes_))))
 
 # ── Step 8: Train XGBoost ─────────────────────────────────────────────────────
 print("Training XGBoost...")
@@ -215,7 +215,7 @@ xgb_model = XGBClassifier(
 xgb_model.fit(X_train, y_train)
 y_pred_xgb = xgb_model.predict(X_test)
 print("--- XGBoost: Classification Report ---")
-print(classification_report(y_test, y_pred_xgb, target_names=label_encoder.classes_))
+print(classification_report(y_test, y_pred_xgb, target_names=label_encoder.classes_, labels=np.arange(len(label_encoder.classes_))))
 
 # ── Step 8b: Capture confusion matrix aggregates for metadata ────────────────
 from sklearn.metrics import confusion_matrix as _cm, accuracy_score as _acc

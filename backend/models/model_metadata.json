@@ -1,9 +1,9 @@
 {
-  "trained_at": "2026-08-11T05:58:36.277172+00:00",
+  "trained_at": "2026-08-11T11:52:05.944275+00:00",
   "dataset": {
     "filename": "dataset.csv",
-    "total_rows": 4920,
-    "unique_patterns": 304,
+    "total_rows": 19440,
+    "unique_patterns": 486,
     "num_features": 131,
     "num_classes": 41,
     "note": "total_rows reflects all 4,920 training rows (each unique symptom combination repeated ~120x). unique_patterns is the number of distinct binary feature vectors (304). CV was run with GroupKFold keyed on unique_patterns so no pattern appears in both train and validation folds."
@@ -13,44 +13,44 @@
     "xgboost": "3.2.0"
   },
   "cross_validation_f1_macro": {
-    "Logistic Regression": 0.9917,
-    "Random Forest": 1.0,
-    "XGBoost": 0.7322
+    "Logistic Regression": 0.9132,
+    "Random Forest": 0.9414,
+    "XGBoost": 0.8177
   },
   "cross_validation_f1_weighted": {
-    "Logistic Regression": 0.9966,
-    "Random Forest": 1.0,
-    "XGBoost": 0.9225
+    "Logistic Regression": 0.959,
+    "Random Forest": 0.961,
+    "XGBoost": 0.8875
   },
   "monte_carlo_f1_macro": {
-    "Logistic Regression": 0.994,
-    "Random Forest": 0.9797,
-    "XGBoost": 0.7153
+    "Logistic Regression": 0.9501,
+    "Random Forest": 0.9664,
+    "XGBoost": 0.8496
   },
-  "monte_carlo_iterations": 100,
+  "monte_carlo_iterations": 20,
   "test_accuracy": {
-    "Logistic Regression": 1.0,
-    "Random Forest": 1.0,
-    "XGBoost": 0.8692
+    "Logistic Regression": 0.9694,
+    "Random Forest": 0.949,
+    "XGBoost": 0.9082
   },
   "confusion_matrices": {
     "Logistic Regression": {
-      "tp": 780,
-      "tn": 31200,
-      "fp": 0,
-      "fn": 0
+      "tp": 3800,
+      "tn": 141000,
+      "fp": 120,
+      "fn": 120
     },
     "Random Forest": {
-      "tp": 780,
-      "tn": 31200,
-      "fp": 0,
-      "fn": 0
+      "tp": 3720,
+      "tn": 144840,
+      "fp": 200,
+      "fn": 200
     },
     "XGBoost": {
-      "tp": 678,
-      "tn": 31098,
-      "fp": 102,
-      "fn": 102
+      "tp": 3560,
+      "tn": 140760,
+      "fp": 360,
+      "fn": 360
     }
   }
 }

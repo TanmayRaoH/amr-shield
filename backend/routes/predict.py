@@ -242,7 +242,7 @@ def predict():
     # and an unhandled exception would otherwise return an HTML error page.
     try:
         feature_vector = preprocessor_service.preprocess(recognized_symptoms)
-        result = ml_service.predict_all(feature_vector)
+        result = ml_service.predict_all(feature_vector, entered_symptoms=recognized_symptoms)
     except Exception as exc:
         logger.exception(f"Inference failed: {exc}")
         return (
@@ -282,6 +282,8 @@ def predict():
         "total_models": result["total_models"],
         "agreeing_models": result["agreeing_models"],
         "differentials": result["differentials"],
+        "plausibility_warning": result["plausibility_warning"],
+        "top_overlap": result["top_overlap"],
         "recognized_symptoms": recognized_symptoms,
         "unrecognized_symptoms": unrecognized_symptoms,
         "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -9,6 +9,7 @@ Provides the MLService class responsible for:
     bands, a ranked differential list, and an explicit agreement count.
 """
 
+import json
 import logging
 import os
 import pickle
@@ -41,6 +42,15 @@ CONFIDENCE_MODERATE = 0.40
 # Number of ranked alternatives returned alongside the top prediction.
 DIFFERENTIAL_COUNT = 3
 
+# Plausibility filter — minimum fraction of user symptoms that must overlap
+# with a condition's known symptom set for it to be considered plausible.
+# Example: user enters 3 symptoms, condition has 0 matching → overlap = 0.0
+# A condition with zero overlap should never surface as the top answer.
+PLAUSIBILITY_MIN_OVERLAP = 0.20   # at least 20% of entered symptoms must match
+
+# Path to the condition→symptoms mapping built from the training dataset
+_CONDITION_SYMPTOMS_PATH = os.path.join(_MODELS_DIR, "condition_symptoms.json")
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +68,7 @@ class MLService:
         """Initialise the service with empty model slots."""
         self._models: dict = {}
         self._models_loaded: bool = False
+        self._condition_symptoms: dict = {}   # condition → set of known symptoms
 
     def load_models(self) -> None:
         """
@@ -82,6 +93,21 @@ class MLService:
                 self._models[display_name] = pickle.load(f)
 
         self._models_loaded = True
+
+        # Load condition→symptoms plausibility map
+        if os.path.isfile(_CONDITION_SYMPTOMS_PATH):
+            with open(_CONDITION_SYMPTOMS_PATH, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            self._condition_symptoms = {k: set(v) for k, v in raw.items()}
+            logger.info(
+                f"Loaded plausibility map for {len(self._condition_symptoms)} conditions "
+                f"from condition_symptoms.json"
+            )
+        else:
+            logger.warning(
+                "condition_symptoms.json not found — plausibility filtering disabled. "
+                "Re-run `python run_training.py` to generate it."
+            )
 
         # Log metadata so operators can confirm which training run is active
         metadata = read_metadata()
@@ -133,7 +159,32 @@ class MLService:
 
         return aligned
 
-    def predict_all(self, feature_vector: np.ndarray) -> dict:
+    def _overlap_score(self, condition: str, entered_symptoms: list) -> float:
+        """
+        Return the fraction of entered symptoms that appear in the condition's
+        known symptom set.
+
+        A score of 0.0 means none of the entered symptoms are associated with
+        this condition in the training data — it should not surface as a top
+        answer regardless of what the model's probability says.
+
+        Args:
+            condition (str): The class name to check against.
+            entered_symptoms (list[str]): Symptoms the user submitted.
+
+        Returns:
+            float: Overlap fraction in [0.0, 1.0], or 1.0 if the map is absent
+                   (i.e. plausibility filtering is disabled → no penalty).
+        """
+        if not self._condition_symptoms or not entered_symptoms:
+            return 1.0
+        known = self._condition_symptoms.get(condition, set())
+        if not known:
+            return 1.0   # Unknown condition — don't penalise
+        matches = sum(1 for s in entered_symptoms if s in known)
+        return matches / len(entered_symptoms)
+
+    def predict_all(self, feature_vector: np.ndarray, entered_symptoms: list = None) -> dict:
         """
         Run all three models on the provided feature vector and combine them
         into a soft-voting ensemble result.
@@ -170,7 +221,9 @@ class MLService:
                 "agreement_count": int,
                 "total_models": int,
                 "agreeing_models": list[str],
-                "differentials": [{"condition": str, "probability": float}, ...],
+                "differentials": [{"condition": str, "probability": float, "overlap": float}, ...],
+                "plausibility_warning": bool,
+                "top_overlap": float,
             }
 
         Raises:
@@ -199,9 +252,40 @@ class MLService:
 
         # --- Soft vote: mean probability across all models ---
         ensemble_probabilities = probability_sum / len(self._models)
-        final_index = int(np.argmax(ensemble_probabilities))
+
+        # --- Plausibility-aware ranking ---
+        # The raw ensemble can surface conditions that share a few generic symptoms
+        # (e.g. mild_fever, nausea) with many diseases, causing unrelated conditions
+        # to rank highly on vague input. We compute a symptom-overlap score for each
+        # candidate and use it to re-rank: a condition with zero overlap with the
+        # entered symptoms is moved below conditions that have at least some.
+        #
+        # We do NOT zero-out probabilities — the model's signal is preserved for
+        # the comparison table. We only reorder the final answer and differentials.
+        symptoms_for_filter = entered_symptoms or []
+
+        # Plausibility-weighted score: prob * (overlap + epsilon)
+        # epsilon prevents a zero-overlap condition from being chosen only if a
+        # plausible alternative exists.
+        EPSILON = 0.05
+        plausibility_scores = np.zeros(len(class_names), dtype=float)
+        for idx, name in enumerate(class_names):
+            overlap = self._overlap_score(name, symptoms_for_filter)
+            plausibility_scores[idx] = ensemble_probabilities[idx] * (overlap + EPSILON)
+
+        # Final prediction: argmax of plausibility-weighted scores
+        final_index = int(np.argmax(plausibility_scores))
         final_prediction = class_names[final_index]
         ensemble_confidence = round(float(ensemble_probabilities[final_index]), 4)
+        top_overlap = round(self._overlap_score(final_prediction, symptoms_for_filter), 4)
+        plausibility_warning = top_overlap < PLAUSIBILITY_MIN_OVERLAP
+
+        if plausibility_warning:
+            logger.warning(
+                f"Plausibility warning: '{final_prediction}' has only "
+                f"{top_overlap:.0%} symptom overlap with entered symptoms. "
+                f"Result may be unreliable."
+            )
 
         # --- Agreement: how many individual models back the ensemble answer ---
         agreeing_models = [
@@ -220,12 +304,15 @@ class MLService:
         else:
             confidence_level = "low"
 
-        # --- Ranked differentials (top N by ensemble probability) ---
-        top_indices = np.argsort(ensemble_probabilities)[::-1][:DIFFERENTIAL_COUNT]
+        # --- Ranked differentials ---
+        # Use plausibility-weighted scores for ranking, but report raw probability.
+        # Attach overlap score per differential so the UI can flag low-overlap entries.
+        top_indices = np.argsort(plausibility_scores)[::-1][:DIFFERENTIAL_COUNT]
         differentials = [
             {
                 "condition": class_names[int(i)],
                 "probability": round(float(ensemble_probabilities[int(i)]), 4),
+                "overlap": round(self._overlap_score(class_names[int(i)], symptoms_for_filter), 4),
             }
             for i in top_indices
             if ensemble_probabilities[int(i)] > 0
@@ -243,6 +330,8 @@ class MLService:
             "total_models": total_models,
             "agreeing_models": agreeing_models,
             "differentials": differentials,
+            "plausibility_warning": plausibility_warning,
+            "top_overlap": top_overlap,
         }
 
 

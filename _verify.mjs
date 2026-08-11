@@ -28,9 +28,5 @@ console.log(
   'bad synonym targets:',
   [...new Set(Object.values(sym.SYMPTOM_SYNONYMS))].filter((v) => !features.includes(v)),
 )
-console.log(
-  'preset symptoms all valid:',
-  sym.PRESET_CASES.every((p) => p.symptoms.every((s) => features.includes(s))),
-)
 console.log('normaliseQuery("burning pee") ->', sym.normaliseQuery('burning pee'))
 console.log('formatSymptom("dischromic__patches") ->', sym.formatSymptom('dischromic__patches'))

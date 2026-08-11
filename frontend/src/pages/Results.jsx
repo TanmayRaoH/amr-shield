@@ -11,6 +11,9 @@ import {
 } from '../data/antibiotics'
 import { formatSymptom } from '../data/symptoms'
 
+// Must match the backend PLAUSIBILITY_MIN_OVERLAP constant in ml_service.py
+const PLAUSIBILITY_MIN_OVERLAP = 0.20
+
 // Which GHO indicator applies to each condition
 // Only bacterial infections with a genuine pathogen match are included.
 // Acne is excluded despite having antibiotic options — it is not a MRSA infection
@@ -192,6 +195,8 @@ export default function Results() {
     unrecognized_symptoms,
     recognized_symptoms,
     patientContext = {},
+    plausibility_warning = false,
+    top_overlap = 1,
   } = predictionResult
 
   const { ageGroup, penicillinAllergy, pregnant } = patientContext
@@ -353,6 +358,26 @@ export default function Results() {
           </div>
         )}
 
+        {/* Plausibility warning — symptom-condition mismatch */}
+        {plausibility_warning && (
+          <div
+            role="alert"
+            className="bg-amber-50 border border-amber-400 rounded-xl p-5 flex items-start gap-3"
+          >
+            <span className="text-amber-500 font-bold text-xl" aria-hidden="true">⚠</span>
+            <div>
+              <p className="font-bold text-amber-900">Low symptom-condition overlap</p>
+              <p className="text-sm text-amber-800 mt-1">
+                Only <strong>{Math.round(top_overlap * 100)}%</strong> of the symptoms you
+                entered are associated with <strong>{final_prediction}</strong> in the training
+                data. The model may be pattern-matching on generic symptoms (e.g. fever, nausea)
+                shared across many conditions. This result is unreliable — consider entering
+                more specific symptoms or consulting a clinician.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Antibiotic appropriateness — the core stewardship message */}
         {therapy.antibioticIndicated ? (
           topAware && (
@@ -463,6 +488,14 @@ export default function Results() {
                   >
                     {d.condition}
                   </span>
+                  {d.overlap !== undefined && d.overlap < PLAUSIBILITY_MIN_OVERLAP && (
+                    <span
+                      className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap"
+                      title="Few of your symptoms match this condition's known profile"
+                    >
+                      ⚠ low overlap
+                    </span>
+                  )}
                   <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-navy"
