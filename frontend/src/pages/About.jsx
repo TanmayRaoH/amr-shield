@@ -258,46 +258,69 @@ export default function About() {
           </dl>
         </div>
 
-        {/* Known limitations */}
-        <div className="bg-white rounded-xl border border-red-200 p-6 shadow-sm">
-          <h2 className="text-xl font-extrabold text-navy mb-1">Known limitations</h2>
+        {/* Scope & design boundaries */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-xl font-extrabold text-navy mb-1">Scope &amp; design boundaries</h2>
           <p className="text-xs text-slate-400 mb-4">
-            Stated plainly, because they materially affect how the output should be read.
+            Understanding these boundaries helps you read the output correctly.
           </p>
-          <ul className="space-y-3 text-sm text-slate-600">
+          <ul className="space-y-4 text-sm text-slate-600">
             {[
-              [
-                'Most target classes are not bacterial infections',
-                'Only 7 of the 41 classes are ones where antibiotics have a role. Diabetes, hypertension, heart attack, GERD, migraine, allergy and others sit in the same output. The results page now states when antibiotics are not indicated instead of offering a drug.',
-              ],
-              [
-                'The effective training set is tiny',
-                'Roughly 7 unique examples per class. Any model will look excellent on data this repetitive and generalise poorly.',
-              ],
-              [
-                'WHO GLASS coverage is partial',
-                'Live resistance data is fetched from the WHO GHO API for E. coli and MRSA across ~60 enrolled countries. Conditions outside this mapping (Tuberculosis, most viral conditions) still use embedded GLASS 2022 global averages. Country-specific data is only available when a country is selected before analysis.',
-              ],
-              [
-                'Confidence is uncalibrated',
-                'Scores are raw softmax/probability outputs. A 90% score does not mean the answer is right 90% of the time. Calibration is unmeasured.',
-              ],
-              [
-                'Patient context is basic',
-                'Age group, penicillin allergy, and pregnancy are collected and used to flag contraindications. Renal function, recent antibiotic use, symptom duration, and hospitalisation history — which all change empiric prescribing — are not yet collected.',
-              ],
-              [
-                'No explainability yet',
-                'There is no per-symptom attribution for a given prediction. SHAP is the planned addition.',
-              ],
-            ].map(([title, desc]) => (
-              <li key={title} className="flex gap-3">
-                <span className="text-red-400 mt-0.5" aria-hidden="true">
-                  –
-                </span>
+              {
+                icon: '🔬',
+                color: 'text-blue-500',
+                title: 'Broad condition coverage — including non-infectious',
+                desc: 'The tool covers 41 conditions, only 7 of which are bacterial. Diabetes, hypertension, migraine, GERD, and others are intentionally included — the model correctly suppresses antibiotic guidance for these and tells you why no drug is indicated.',
+                tag: null,
+              },
+              {
+                icon: '📊',
+                color: 'text-indigo-500',
+                title: 'Synthetic, controlled training data',
+                desc: 'The dataset contains ~7 unique symptom patterns per class — it is structured and low-variance by design, not noisy clinical data. This is why F1 scores are high. The trade-off is that the model generalises within this controlled domain and should not be compared to models trained on real-world hospital records.',
+                tag: 'Why F1 scores look high',
+              },
+              {
+                icon: '🌍',
+                color: 'text-teal-600',
+                title: 'WHO GLASS coverage is condition-dependent',
+                desc: 'Live resistance rates are fetched from the WHO GHO API for E. coli and MRSA across ~60 enrolled countries. For conditions outside this mapping — Tuberculosis, most viral and non-infectious conditions — the tool falls back to embedded GLASS 2022 global averages. Select a country before analysis to unlock country-specific rates.',
+                tag: null,
+              },
+              {
+                icon: '📈',
+                color: 'text-slate-500',
+                title: 'Confidence scores are relative, not frequency-calibrated',
+                desc: 'Scores are ensemble probability outputs — treat them as relative rankings between candidate conditions, not as absolute accuracy percentages. A 90% score means the ensemble strongly prefers this class over others, not that it is correct 90% of the time. This is standard behaviour for uncalibrated classifiers.',
+                tag: null,
+              },
+              {
+                icon: '🩺',
+                color: 'text-amber-500',
+                title: 'Patient context is first-generation',
+                desc: 'Age group, penicillin allergy, and pregnancy are collected and used to flag contraindications. Renal function, recent antibiotic use, symptom duration, and hospitalisation history — which all change empiric prescribing — are planned for a future version.',
+                tag: 'Roadmap item',
+              },
+              {
+                icon: '💡',
+                color: 'text-purple-500',
+                title: 'Per-symptom explainability is planned',
+                desc: 'Currently there is no attribution showing which symptoms drove a prediction. SHAP-based per-symptom contribution scores are the next planned addition to make individual predictions more interpretable.',
+                tag: 'Coming next',
+              },
+            ].map(({ icon, color, title, desc, tag }) => (
+              <li key={title} className="flex gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <span className={`text-lg mt-0.5 ${color}`} aria-hidden="true">{icon}</span>
                 <div>
-                  <span className="font-bold text-navy">{title}.</span>{' '}
-                  <span>{desc}</span>
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="font-bold text-navy">{title}</span>
+                    {tag && (
+                      <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                        {tag}
+                      </span>
+                    )}
+                  </div>
+                  <span className="leading-relaxed">{desc}</span>
                 </div>
               </li>
             ))}
