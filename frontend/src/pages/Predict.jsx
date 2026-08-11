@@ -4,7 +4,6 @@ import useAppStore from '../store/useAppStore'
 import { runPrediction, fetchGlassData } from '../services/api'
 import {
   ALL_SYMPTOMS,
-  PRESET_CASES,
   formatSymptom,
   groupSymptoms,
   normaliseQuery,
@@ -88,13 +87,6 @@ export default function Predict() {
   }, [search, activeCategory, vocabulary, categories])
 
   const canSubmit = selectedSymptoms.length >= MIN_SYMPTOMS && !predictionLoading
-
-  const applyPreset = (preset) => {
-    dismissPredictionError()
-    setSymptoms(preset.symptoms)
-    setActiveCategory('All')
-    setSearch('')
-  }
 
   const handleAnalyse = async () => {
     if (!canSubmit) return
@@ -198,25 +190,6 @@ export default function Predict() {
           </div>
         )}
 
-        {/* Preset cases — removes the friction of hand-picking from 131 chips */}
-        <div className="mb-6">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            Or start from an example
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {PRESET_CASES.map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => applyPreset(preset)}
-                title={preset.description}
-                className="text-left px-3 py-2 bg-white border border-slate-200 rounded-xl hover:border-teal hover:shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
-              >
-                <span className="block text-sm font-bold text-navy">{preset.label}</span>
-                <span className="block text-xs text-slate-500">{preset.description}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Patient context — affects contraindication warnings on Results */}
         <div className="mb-6 bg-white rounded-xl border border-slate-200 p-4">
@@ -409,7 +382,7 @@ export default function Predict() {
                 <p className="text-slate-400 text-xs text-center py-6">
                   No symptoms selected yet.
                   <br />
-                  Pick from the list or use an example above.
+                  Pick from the list on the left.
                 </p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
