@@ -37,8 +37,9 @@ export default function DisclaimerModal() {
       aria-labelledby="disclaimer-title"
       aria-describedby="disclaimer-body"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-7">
-        <div className="flex items-start gap-3 mb-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh]">
+        {/* Fixed header */}
+        <div className="flex items-start gap-3 p-7 pb-4">
           <span
             className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg"
             aria-hidden="true"
@@ -55,7 +56,8 @@ export default function DisclaimerModal() {
           </div>
         </div>
 
-        <div id="disclaimer-body" className="space-y-3 text-sm text-slate-600 leading-relaxed">
+        {/* Scrollable body */}
+        <div id="disclaimer-body" className="overflow-y-auto px-7 space-y-3 text-sm text-slate-600 leading-relaxed flex-1">
           <p>
             This tool is <strong className="text-navy">not a medical device</strong> and must
             not be used to diagnose, treat, or make prescribing decisions for any real person.
@@ -96,19 +98,22 @@ export default function DisclaimerModal() {
             </li>
           </ul>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 pb-2">
             No symptom data leaves your browser except to this project&apos;s own prediction API.
             History is stored locally on this device.
           </p>
         </div>
 
-        <button
-          ref={acceptRef}
-          onClick={acceptDisclaimer}
-          className="mt-6 w-full py-3 bg-navy text-white font-bold rounded-xl hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 transition-colors"
-        >
-          I understand — for research and educational purposes
-        </button>
+        {/* Fixed footer button — always visible */}
+        <div className="p-7 pt-4">
+          <button
+            ref={acceptRef}
+            onClick={acceptDisclaimer}
+            className="w-full py-3 bg-navy text-white font-bold rounded-xl hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 transition-colors"
+          >
+            I understand — for research and educational purposes
+          </button>
+        </div>
       </div>
     </div>
   )

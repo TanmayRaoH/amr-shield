@@ -35,6 +35,9 @@ node_modules/
 # Processed data
 data/processed/
 
+# Local developer notes — not for version control
+working.md
+
 # OS
 .DS_Store
 Thumbs.db
