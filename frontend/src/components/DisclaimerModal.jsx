@@ -56,51 +56,46 @@ export default function DisclaimerModal() {
           </div>
         </div>
 
-        {/* Scrollable body */}
         <div id="disclaimer-body" className="overflow-y-auto px-7 space-y-3 text-sm text-slate-600 leading-relaxed flex-1">
           <p>
-            This tool is <strong className="text-navy">not a medical device</strong> and must
-            not be used to diagnose, treat, or make prescribing decisions for any real person.
-            Always consult a qualified clinician.
+            This tool is <strong className="text-navy">not a doctor</strong> and cannot
+            be used to diagnose or treat any illness. Always see a real doctor before
+            taking any medicine.
           </p>
 
           <ul className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <li className="flex gap-2">
               <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                The models were trained on{' '}
-                <strong className="text-navy">304 unique symptom combinations</strong> across 41
-                classes — for research and educational exploration only.
+                This app gives you a <strong className="text-navy">possible condition</strong> based
+                on your symptoms — it is not a confirmed diagnosis.
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                Only <strong className="text-navy">7 of the 41 target classes</strong> are
-                conditions where antibiotics have any role. The tool clearly states when
-                antibiotics are not appropriate.
+                It will tell you whether an antibiotic is likely needed or not —
+                but a <strong className="text-navy">doctor must make the final call</strong>.
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                Live resistance data is fetched from the{' '}
-                <strong className="text-navy">WHO GHO API</strong> when a country is selected.
-                Global averages are used as fallback where country data is unavailable.
+                If you select your country, the app shows how well certain antibiotics
+                are still working there, based on <strong className="text-navy">WHO global data</strong>.
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-slate-400" aria-hidden="true">–</span>
               <span>
-                Confidence scores are model probabilities. Always consult a qualified clinician
-                before making any prescribing decision.
+                The confidence shown is an estimate — not a guarantee.
+                Always trust your doctor over this app.
               </span>
             </li>
           </ul>
 
           <p className="text-xs text-slate-500 pb-2">
-            No symptom data leaves your browser except to this project&apos;s own prediction API.
-            History is stored locally on this device.
+            Your symptom data is never stored or shared. History is saved only on your own device.
           </p>
         </div>
 

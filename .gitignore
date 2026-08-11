@@ -37,6 +37,7 @@ data/processed/
 
 # Local developer notes — not for version control
 working.md
+NEED.md
 
 # OS
 .DS_Store
