@@ -10,7 +10,7 @@
 # Update this URL after you get your Render service URL
 [[redirects]]
   from   = "/api/*"
-  to     = "https://amr-shield-api.onrender.com/api/:splat"
+  to     = "https://amr-shield.onrender.com/api/:splat"
   status = 200
   force  = true
 
