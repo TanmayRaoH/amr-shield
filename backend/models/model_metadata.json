@@ -1,0 +1,56 @@
+{
+  "trained_at": "2026-08-11T05:58:36.277172+00:00",
+  "dataset": {
+    "filename": "dataset.csv",
+    "total_rows": 4920,
+    "unique_patterns": 304,
+    "num_features": 131,
+    "num_classes": 41,
+    "note": "total_rows reflects all 4,920 training rows (each unique symptom combination repeated ~120x). unique_patterns is the number of distinct binary feature vectors (304). CV was run with GroupKFold keyed on unique_patterns so no pattern appears in both train and validation folds."
+  },
+  "versions": {
+    "scikit_learn": "1.8.0",
+    "xgboost": "3.2.0"
+  },
+  "cross_validation_f1_macro": {
+    "Logistic Regression": 0.9917,
+    "Random Forest": 1.0,
+    "XGBoost": 0.7322
+  },
+  "cross_validation_f1_weighted": {
+    "Logistic Regression": 0.9966,
+    "Random Forest": 1.0,
+    "XGBoost": 0.9225
+  },
+  "monte_carlo_f1_macro": {
+    "Logistic Regression": 0.994,
+    "Random Forest": 0.9797,
+    "XGBoost": 0.7153
+  },
+  "monte_carlo_iterations": 100,
+  "test_accuracy": {
+    "Logistic Regression": 1.0,
+    "Random Forest": 1.0,
+    "XGBoost": 0.8692
+  },
+  "confusion_matrices": {
+    "Logistic Regression": {
+      "tp": 780,
+      "tn": 31200,
+      "fp": 0,
+      "fn": 0
+    },
+    "Random Forest": {
+      "tp": 780,
+      "tn": 31200,
+      "fp": 0,
+      "fn": 0
+    },
+    "XGBoost": {
+      "tp": 678,
+      "tn": 31098,
+      "fp": 102,
+      "fn": 102
+    }
+  }
+}

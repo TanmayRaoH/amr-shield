@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: amr-shield-api
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn "backend.app:app" --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://amr-shield.netlify.app

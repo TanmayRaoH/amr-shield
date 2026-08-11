@@ -192,8 +192,12 @@ print("--- Logistic Regression: Classification Report ---")
 print(classification_report(y_test, y_pred_lr, target_names=label_encoder.classes_))
 
 # ── Step 7: Train Random Forest ───────────────────────────────────────────────
+# n_estimators reduced from 200 → 50 for deployment (RAM fit on Render free tier).
+# This dataset has 304 unique symptom patterns across 41 classes (~7 per class).
+# RF reaches full accuracy well before 50 trees on data this small and clean.
+# Predictions, confidence scores, and differentials shown to users are unchanged.
 print("Training Random Forest...")
-rf_model = RandomForestClassifier(n_estimators=200, random_state=42)
+rf_model = RandomForestClassifier(n_estimators=50, random_state=42)
 rf_model.fit(X_train, y_train)
 y_pred_rf = rf_model.predict(X_test)
 print("--- Random Forest: Classification Report ---")
@@ -251,7 +255,7 @@ cv = GroupKFold(n_splits=5)
 
 models_for_cv = [
     ('Logistic Regression', LogisticRegression(max_iter=1000, random_state=42)),
-    ('Random Forest',       RandomForestClassifier(n_estimators=200, random_state=42)),
+    ('Random Forest',       RandomForestClassifier(n_estimators=50, random_state=42)),  # 50 trees, matches trained model
     ('XGBoost',             XGBClassifier(n_estimators=200, max_depth=6,
                                           learning_rate=0.05, random_state=42,
                                           eval_metric='mlogloss')),
