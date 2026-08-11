@@ -154,9 +154,7 @@ function TherapyCard({ option, rank, contraindicationReason }) {
               {amrScore}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Score = 100 − (resistance × 0.7) − (overuse penalty × 0.3)
-          </p>
+
         </>
       )}
     </div>
@@ -523,8 +521,7 @@ export default function Results() {
               <div className="px-5 pt-4 pb-2">
                 <h4 className="text-sm font-extrabold text-navy">AMR Scoring Engine breakdown</h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Formula: Score = 100 − (resistance_rate × 0.7) − (overuse_penalty × 0.3)
-                  · Overuse penalty: Access = 5, Watch = 25, Reserve = 40
+                  How antibiotics are ranked — lower resistance and safer overuse category = higher score.
                   {liveResistancePct !== null && (
                     <span className="ml-2 text-teal font-semibold">
                       · ◎ Scores marked with ◎ use live WHO GLASS data for {liveCountry} ({liveYear})
