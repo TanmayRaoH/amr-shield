@@ -22,7 +22,6 @@ const ShieldIcon = () => (
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
   { to: '/predict', label: 'Analyse' },
-  { to: '/about', label: 'Methodology' },
   { to: '/history', label: 'History' },
 ]
 

@@ -25,14 +25,11 @@ function Divider() {
  * No GLASS integration exists, so that has been replaced with an honest status.
  */
 export default function StatusBar() {
-  const { health, healthLoading, healthError, knownSymptoms, knownConditions } = useAppStore()
+  const { health, healthLoading, healthError } = useAppStore()
 
-  const modelsLoaded = health?.models_loaded ?? false
   const dbConnected = health?.db_connected ?? false
   const trainedAt = health?.model_metadata?.trained_at
   const synced = timeAgo(trainedAt)
-  const conditionCount = knownConditions.length || health?.model_metadata?.dataset?.num_classes || 41
-  const symptomCount = knownSymptoms.length || health?.model_metadata?.dataset?.num_features || 131
 
   return (
     <div className="w-full bg-navy/5 border-y border-navy/10 py-3">
@@ -61,28 +58,7 @@ export default function StatusBar() {
           )}
         </div>
 
-        <Divider />
 
-        {/* Models */}
-        <div className="flex items-center gap-1.5 text-slate-600">
-          <span className="font-bold text-navy">3</span>
-          <span>ML models</span>
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-            modelsLoaded ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-          }`}>
-            {modelsLoaded ? 'Ready' : 'Not loaded'}
-          </span>
-        </div>
-
-        <Divider />
-
-        {/* Vocabulary */}
-        <div className="flex items-center gap-1.5 text-slate-600">
-          <span className="font-bold text-navy">{conditionCount}</span>
-          <span>conditions ·</span>
-          <span className="font-bold text-navy">{symptomCount}</span>
-          <span>symptoms</span>
-        </div>
 
         {synced && (
           <>

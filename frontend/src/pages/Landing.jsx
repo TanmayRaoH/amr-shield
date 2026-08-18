@@ -1,39 +1,18 @@
 import { Link } from 'react-router-dom'
-import PipelineDiagram from '../components/PipelineDiagram'
 import StatusBar from '../components/StatusBar'
 
 const FEATURES = [
   {
-    title: 'Soft-voting ensemble',
-    desc: 'Logistic Regression, Random Forest, and XGBoost each produce a full probability distribution. The three are averaged rather than deferring to one model, and you see every vote.',
-  },
-  {
-    title: 'Honest agreement count',
-    desc: 'The badge reports how many models actually back the answer. A dissenting model is shown as a dissent, not hidden behind a fixed label.',
-  },
-  {
     title: 'Knows when to abstain',
-    desc: 'Below a 40% ensemble probability the result is flagged as insufficient signal instead of being presented as a confident answer.',
+    desc: 'Below a confidence threshold the result is flagged as insufficient signal instead of being presented as a confident answer.',
   },
   {
-    title: 'Says no to antibiotics',
-    desc: 'For the 34 of 41 classes where antibiotics are not appropriate, the result explains why rather than recommending a drug. Declining to prescribe is the point of stewardship.',
+    title: 'Antibiotic stewardship',
+    desc: 'Where antibiotics are not appropriate, the tool says so. Recommendations carry WHO Access, Watch, or Reserve categories.',
   },
   {
-    title: 'AWaRe stewardship labels',
-    desc: 'Options carry WHO Access, Watch, or Reserve categories, with a warning when a regimen reaches for a Watch or Reserve agent.',
-  },
-  {
-    title: 'Ranked alternatives',
-    desc: 'The next most probable conditions are listed with their probabilities, so a close second is visible instead of being discarded.',
-  },
-  {
-    title: 'Stated limitations',
-    desc: 'The methodology page publishes the real cross-validated scores, the true training set size, and what the tool cannot do.',
-  },
-  {
-    title: 'Local history and CSV export',
-    desc: 'Analyses are stored in your browser and survive a refresh. Export the full comparison to CSV at any time.',
+    title: 'Transparent uncertainty',
+    desc: 'Ranked alternatives with their probabilities are shown alongside the top prediction, so close calls are visible rather than hidden.',
   },
 ]
 
@@ -70,17 +49,11 @@ export default function Landing() {
               >
                 Start Diagnosis →
               </Link>
-              <Link
-                to="/about"
-                className="px-6 py-3 border-2 border-navy text-navy font-bold rounded-xl hover:bg-navy hover:text-white transition-colors"
-              >
-                View Methodology
-              </Link>
             </div>
 
             {/* Trust badges */}
             <div className="flex flex-wrap gap-4 mt-8">
-              {['41 conditions', '131 symptoms', 'WHO AWaRe labels', 'Open source'].map((badge) => (
+              {['WHO AWaRe labels', 'Open source'].map((badge) => (
                 <span key={badge} className="text-xs font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full">
                   ✓ {badge}
                 </span>
@@ -88,23 +61,74 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Right — Pipeline diagram */}
+          {/* Right — How to use steps */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-            <p className="text-center text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
-              How it works
+            <p className="text-center text-xs font-semibold text-slate-400 uppercase tracking-widest mb-6">
+              How to use
             </p>
-            <PipelineDiagram />
-            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+            <div className="space-y-6">
               {[
-                { label: 'Input', val: 'Symptoms', color: 'bg-blue-50 text-blue-700' },
-                { label: 'Engine', val: '3 ML Models', color: 'bg-green-50 text-green-700' },
-                { label: 'Output', val: 'Diagnosis', color: 'bg-amber-50 text-amber-700' },
-              ].map(({ label, val, color }) => (
-                <div key={label} className={`${color} rounded-lg p-2`}>
-                  <div className="text-xs text-slate-500">{label}</div>
-                  <div className="text-sm font-bold">{val}</div>
+                {
+                  step: '1',
+                  title: 'Select your symptoms',
+                  desc: 'Choose from a clinically validated list of symptoms you are experiencing.',
+                  color: 'bg-blue-50 text-blue-700 border-blue-200',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path d="M9 12h6M9 16h6" />
+                    </svg>
+                  ),
+                },
+                {
+                  step: '2',
+                  title: 'Get a prediction',
+                  desc: 'Your inputs are analysed and matched against known patterns to return a ranked condition prediction.',
+                  color: 'bg-green-50 text-green-700 border-green-200',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  ),
+                },
+                {
+                  step: '3',
+                  title: 'View guidance',
+                  desc: 'See whether antibiotics are appropriate and what WHO stewardship says.',
+                  color: 'bg-amber-50 text-amber-700 border-amber-200',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 12l2 2 4-4" />
+                      <path d="M12 2a10 10 0 110 20 10 10 0 010-20z" />
+                    </svg>
+                  ),
+                },
+              ].map(({ step, title, desc, color, icon }) => (
+                <div key={step} className="flex items-start gap-4">
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full ${color} border flex items-center justify-center`}>
+                    {icon}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-navy text-sm">
+                      <span className="text-teal mr-1">Step {step}.</span>
+                      {title}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
+                  </div>
                 </div>
               ))}
+            </div>
+            <div className="mt-8 pt-5 border-t border-slate-100 text-center">
+              <Link
+                to="/predict"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-teal hover:text-teal-light transition-colors"
+              >
+                Try it now
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Link>
             </div>
           </div>
         </div>
@@ -123,7 +147,7 @@ export default function Landing() {
           showing the disagreement, the uncertainty, and the cases where no antibiotic is the right
           answer.
         </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map(({ title, desc }) => (
             <div key={title} className="bg-white rounded-xl border border-slate-200 p-6 card-hover">
               <h3 className="font-bold text-navy mb-2">{title}</h3>
