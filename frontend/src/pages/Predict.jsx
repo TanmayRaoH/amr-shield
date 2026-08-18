@@ -310,20 +310,44 @@ export default function Predict() {
 
             {/* Category filter */}
             <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-              {['All', ...Object.keys(categories)].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  aria-pressed={activeCategory === cat}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
-                    activeCategory === cat
-                      ? 'bg-navy text-white'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:border-navy hover:text-navy'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {activeCategory !== 'All' ? (
+                <>
+                  <button
+                    onClick={() => setActiveCategory('All')}
+                    className="px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-navy bg-white border border-slate-200 text-slate-600 hover:border-navy hover:text-navy inline-flex items-center gap-1"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    All
+                  </button>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-navy text-white inline-flex items-center gap-1">
+                    {activeCategory}
+                    <button
+                      onClick={() => setActiveCategory('All')}
+                      className="ml-1 hover:text-slate-300 focus:outline-none"
+                      aria-label={`Deselect ${activeCategory}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                </>
+              ) : (
+                ['All', ...Object.keys(categories)].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    aria-pressed={activeCategory === cat}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                      activeCategory === cat
+                        ? 'bg-navy text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:border-navy hover:text-navy'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))
+              )}
             </div>
 
             {/* Symptom chips grid */}
