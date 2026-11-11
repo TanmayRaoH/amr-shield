@@ -32,75 +32,6 @@ const INDICATOR_TO_ANTIBIOTICS = {
   'AMR_INFECT_MRSA':  ['flucloxacillin', 'clindamycin', 'mupirocin'],
 }
 
-// ── Confidence Donut ────────────────────────────────────────────────────────
-function ConfidenceDonut({ confidence, color = '#0F2D5C' }) {
-  const pct = Math.round(confidence * 100)
-  const circumference = 2 * Math.PI * 45
-  const offset = circumference - (pct / 100) * circumference
-
-  return (
-    <svg width="110" height="110" viewBox="0 0 110 110" role="img"
-      aria-label={`${pct} percent model probability`}>
-      <circle cx="55" cy="55" r="45" fill="none" stroke="#E2E8F0" strokeWidth="10" />
-      <circle
-        cx="55" cy="55" r="45" fill="none"
-        stroke={color} strokeWidth="10"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform="rotate(-90 55 55)"
-        className="animate-dash"
-        style={{ '--target-offset': offset, transition: 'stroke-dashoffset 1.2s ease-out' }}
-      />
-      <text x="55" y="52" textAnchor="middle" fontSize="18" fontWeight="800" fill={color}>
-        {pct}%
-      </text>
-      <text x="55" y="68" textAnchor="middle" fontSize="9" fill="#94A3B8">
-        probability
-      </text>
-    </svg>
-  )
-}
-
-// ── Model Card ──────────────────────────────────────────────────────────────
-const MODEL_COLORS = {
-  'Logistic Regression': '#3B82F6',
-  'Random Forest': '#10B981',
-  XGBoost: '#F59E0B',
-}
-
-function ModelCard({ name, prediction, confidence, agrees }) {
-  const color = MODEL_COLORS[name] || '#0F2D5C'
-  return (
-    <div
-      className={`bg-white rounded-xl border p-5 card-hover ${
-        agrees ? 'border-navy/30' : 'border-amber-300 bg-amber-50/40'
-      }`}
-    >
-      <span
-        className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full mb-2 ${
-          agrees ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'
-        }`}
-      >
-        {agrees ? 'Agrees with ensemble' : 'Dissents'}
-      </span>
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{name}</p>
-          <p className="text-lg font-extrabold text-navy mt-0.5">{prediction}</p>
-        </div>
-        <ConfidenceDonut confidence={confidence} color={color} />
-      </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-1000"
-          style={{ width: `${confidence * 100}%`, backgroundColor: color }}
-        />
-      </div>
-    </div>
-  )
-}
-
 // ── Therapy Card ────────────────────────────────────────────────────────────
 function TherapyCard({ option, rank, contraindicationReason }) {
   const { name, amrScore, resistance, aware, note } = option
@@ -182,15 +113,10 @@ export default function Results() {
   }
 
   const {
-    comparison = {},
     final_prediction,
-    final_prediction_source,
     ensemble_confidence,
     confidence_level,
     low_confidence,
-    agreement_count,
-    total_models = 3,
-    agreeing_models = [],
     differentials = [],
     unrecognized_symptoms,
     recognized_symptoms,
@@ -262,8 +188,6 @@ export default function Results() {
     .map((o) => ({ name: o.name.split(/[\s(+]/)[0], resistance: o.resistance, isLive: o.isLiveData }))
 
   const topAware = options.find((o) => o.aware === 'Watch' || o.aware === 'Reserve')
-  const agreementCount = agreement_count ?? agreeing_models.length
-  const fullAgreement = agreementCount === total_models
 
   const confidenceStyles = {
     high: 'bg-green-100 text-green-800',
@@ -348,7 +272,7 @@ export default function Results() {
             <div>
               <p className="font-bold text-red-800">Insufficient signal for a confident answer</p>
               <p className="text-sm text-red-700 mt-1">
-                The ensemble probability is only{' '}
+                The predicted probability is only{' '}
                 {Math.round((ensemble_confidence ?? 0) * 100)}%. The symptom combination you
                 entered does not closely match any pattern in the training data. Treat the
                 prediction below as a weak hint at best — clinical evaluation is the appropriate
@@ -443,14 +367,6 @@ export default function Results() {
           <h2 className="text-4xl font-extrabold text-navy mb-4">{final_prediction}</h2>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span
-              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-sm ${
-                fullAgreement ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {fullAgreement ? '✓' : '△'} {agreementCount}/{total_models} models agree
-            </span>
-
             {confidence_level && (
               <span
                 className={`px-4 py-1.5 rounded-full font-bold text-sm ${
@@ -462,11 +378,6 @@ export default function Results() {
             )}
           </div>
 
-          {final_prediction_source && (
-            <p className="text-xs text-slate-400 mt-4">
-              Decided by {final_prediction_source}. Probabilities are uncalibrated.
-            </p>
-          )}
         </div>
 
         {/* Differentials */}
@@ -474,7 +385,7 @@ export default function Results() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="text-lg font-extrabold text-navy mb-1">Ranked alternatives</h3>
             <p className="text-xs text-slate-400 mb-4">
-              Next most probable conditions from the same ensemble. A close second means the
+              Next most probable conditions. A close second means the
               result is not clear-cut.
             </p>
             <ul className="space-y-2">
@@ -510,26 +421,6 @@ export default function Results() {
             </ul>
           </div>
         )}
-
-        {/* Section B — Model comparison */}
-        <div>
-          <h3 className="text-lg font-extrabold text-navy mb-1">Model comparison</h3>
-          <p className="text-xs text-slate-400 mb-4">
-            Each model votes independently. The final answer is the mean of their probability
-            distributions, so a dissenting model does not automatically decide the outcome.
-          </p>
-          <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(comparison).map(([name, { prediction, confidence }]) => (
-              <ModelCard
-                key={name}
-                name={name}
-                prediction={prediction}
-                confidence={confidence}
-                agrees={prediction === final_prediction}
-              />
-            ))}
-          </div>
-        </div>
 
         {/* Section C — Therapy guidance */}
         <div>

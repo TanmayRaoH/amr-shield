@@ -22,33 +22,16 @@ function downloadCSV(history) {
     'Final Prediction',
     'Ensemble Confidence',
     'Confidence Level',
-    'Agreement',
-    'LR Prediction',
-    'LR Confidence',
-    'RF Prediction',
-    'RF Confidence',
-    'XGB Prediction',
-    'XGB Confidence',
   ]
 
   const rows = history.map((h) => {
     const r = h.result || {}
-    const c = r.comparison || {}
-    const total = r.total_models ?? 3
-    const agreed = r.agreement_count ?? (r.model_agreement ? total : '')
     return [
       new Date(h.timestamp).toLocaleString(),
       (h.symptoms || []).join('; '),
       r.final_prediction || '',
       r.ensemble_confidence ?? '',
       r.confidence_level || '',
-      agreed === '' ? '' : `${agreed}/${total}`,
-      c['Logistic Regression']?.prediction || '',
-      c['Logistic Regression']?.confidence ?? '',
-      c['Random Forest']?.prediction || '',
-      c['Random Forest']?.confidence ?? '',
-      c['XGBoost']?.prediction || '',
-      c['XGBoost']?.confidence ?? '',
     ]
   })
 
@@ -234,11 +217,11 @@ export default function History() {
             <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
               <table className="w-full text-sm">
                 <caption className="sr-only">
-                  Saved predictions with condition, confidence, symptoms, and model agreement
+                  Saved predictions with condition, confidence, and symptoms
                 </caption>
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    {['Time', 'Condition', 'Confidence', 'Symptoms', 'Agreement'].map((h) => (
+                    {['Time', 'Condition', 'Confidence', 'Symptoms'].map((h) => (
                       <th
                         key={h}
                         scope="col"
@@ -252,12 +235,7 @@ export default function History() {
                 <tbody>
                   {filtered.map((entry) => {
                     const r = entry.result || {}
-                    // Fall back to the XGBoost score for entries saved before the
-                    // ensemble was introduced.
-                    const confidence =
-                      r.ensemble_confidence ?? r.comparison?.['XGBoost']?.confidence ?? 0
-                    const total = r.total_models ?? 3
-                    const agreed = r.agreement_count ?? (r.model_agreement ? total : null)
+                    const confidence = r.ensemble_confidence ?? 0
                     const level = r.confidence_level
 
                     return (
@@ -309,21 +287,6 @@ export default function History() {
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          {agreed === null ? (
-                            <span className="text-slate-400 text-xs">—</span>
-                          ) : (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                                agreed === total
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {agreed}/{total}
-                            </span>
-                          )}
                         </td>
                       </tr>
                     )
