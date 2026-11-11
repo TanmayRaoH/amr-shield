@@ -146,6 +146,11 @@ Seven files are saved to `backend/models/`:
 
 Using three separate models and combining their answers (an "ensemble") is more reliable than trusting one. If two models agree and one disagrees, the disagreement signals uncertainty. It also removes the arbitrary choice of which single model to trust.
 
+### One-liner for each model:
+- **Logistic Regression** — A linear model that assigns a weight to each symptom and draws decision boundaries to separate conditions.
+- **Random Forest** — An ensemble of 50 independent decision trees that vote on the final diagnosis, reducing individual error through majority rule.
+- **XGBoost** — A sequential boosting algorithm where each new tree corrects the mistakes of all previous trees, learning iteratively from its own errors.
+
 ---
 
 ## Model 1: Logistic Regression
@@ -397,15 +402,21 @@ If MySQL is not available, the server continues running. Prediction history fall
 
 ## Technology Stack
 
-| Technology | Purpose |
+| Technology | One-liner |
 |---|---|
-| **React 18** | UI component framework |
-| **Vite** | Build tool and development server |
-| **React Router v6** | Client-side page navigation |
-| **Zustand** | Global state management |
-| **Axios** | HTTP client for API calls |
-| **Recharts** | Bar charts for resistance visualization |
-| **Tailwind CSS v4** | Utility-first styling |
+| **React 18** | A component-based JavaScript library for building interactive UIs through declarative, reusable pieces. |
+| **Vite** | A lightning-fast build tool that serves code instantly in development and bundles it efficiently for production. |
+| **React Router v6** | Enables multi-page navigation in a single-page app without full page reloads. |
+| **Zustand** | A minimal state management library that shares data across components without prop-drilling or boilerplate. |
+| **Axios** | A promise-based HTTP client that sends requests to the backend and handles responses/errors cleanly. |
+| **Recharts** | A React charting library used here to render resistance-rate bar charts from WHO data. |
+| **Tailwind CSS v4** | A utility-first CSS framework that styles elements directly in markup with small, composable classes. |
+| **Flask (Python)** | A lightweight web framework that receives HTTP requests, routes them to handler functions, and returns JSON responses. |
+| **scikit-learn** | The core ML library providing Logistic Regression, Random Forest, preprocessing, and evaluation utilities. |
+| **XGBoost** | A gradient-boosted tree library optimized for speed and performance on structured/tabular data. |
+| **MySQL** | A relational database storing prediction history and cached WHO resistance data persistently. |
+| **Netlify** | A static hosting platform that serves the built frontend globally via CDN with automatic deploys. |
+| **Render** | A cloud platform running the Flask backend as a web service with environment variable management. |
 
 ## Pages
 
